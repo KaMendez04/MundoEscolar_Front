@@ -22,21 +22,20 @@ interface NavBarProps {
 
 // ✅ Mapeo de rutas a títulos
 const routeTitles: Record<string, string> = {
-  '/': 'Home',
-  '/dashboard': 'Dashboard de Estadísticas',
-  '/settings': 'Settings',
-  '/team': 'Team',
-  '/about': 'About',
-  '/test': 'Test'
+  '/': 'Dashboard',
+  '/Ventas': 'Dashboard de Estadísticas',
+  '/Inventario': 'Control de Inventario',
+  '/Reportes': 'Reportes',
+  '/Orden': 'Orden de Proveedor',
 };
 
 // ✅ Configuración de navegación
 const navigationItems = [
-  { to: '/', icon: Home, label: 'Home' },
-  { to: '/dashboard', icon: BarChart3, label: 'Dashboard' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
-  { to: '/team', icon: Users, label: 'Team', hasSubmenu: true },
-  { to: '/about', icon: Info, label: 'About' },
+  { to: '/', icon: Home, label: 'Dashboard' },
+  { to: '/Ventas', icon: BarChart3, label: 'Ventas' },
+  { to: '/Inventario', icon: Settings, label: 'Control de Inventario' },
+  { to: '/Reportes', icon: Users, label: 'Reportes', hasSubmenu: true },
+  { to: '/Orden', icon: Info, label: 'Orden de Proveedor' },
 
 ];
 

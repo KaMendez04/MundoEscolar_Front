@@ -1,6 +1,6 @@
 import { Outlet } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import LoginPage from "../page/LoginPage";
+import LoginPage from "../../page/LoginPage";
 import NavBar from "./NavBar";
 
 const RootLayout = () => {
