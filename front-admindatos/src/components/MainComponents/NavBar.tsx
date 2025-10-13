@@ -23,7 +23,7 @@ interface NavBarProps {
 // ✅ Mapeo de rutas a títulos
 const routeTitles: Record<string, string> = {
   '/': 'Dashboard',
-  '/Ventas': 'Dashboard de Estadísticas',
+  '/Ventas': 'Area de Ventas',
   '/Inventario': 'Control de Inventario',
   '/Reportes': 'Reportes',
   '/Orden': 'Orden de Proveedor',
