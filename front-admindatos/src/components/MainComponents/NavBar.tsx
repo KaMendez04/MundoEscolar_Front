@@ -3,15 +3,17 @@ import { useState } from "react";
 import { 
   Search, 
   BarChart3, 
-  Settings, 
-  Users, 
+  PackagePlus,
+  FileText, 
   ChevronRight, 
-  Info, 
+  Truck, 
   LogOut, 
   Bell,
   PanelLeftClose,
   PanelLeftOpen,
-  Home
+  ChartSpline,
+  ShoppingBasket,
+  Users,
 } from "lucide-react";
 
 // ✅ Definimos las props esperadas simplificadas
@@ -22,21 +24,24 @@ interface NavBarProps {
 
 // ✅ Mapeo de rutas a títulos
 const routeTitles: Record<string, string> = {
-  '/': 'Home',
-  '/dashboard': 'Dashboard de Estadísticas',
-  '/settings': 'Settings',
-  '/team': 'Team',
-  '/about': 'About',
-  '/test': 'Test'
+  '/': 'Dashboard',
+  '/Ventas': 'Area de Ventas',
+  '/Inventario': 'Control de Inventario',
+  '/Reportes': 'Reportes',
+  '/Orden': 'Orden de Proveedor',
+  '/VentasServicio': 'Inventario Servicio',
+  '/clientes': 'Clientes',
 };
 
 // ✅ Configuración de navegación
 const navigationItems = [
-  { to: '/', icon: Home, label: 'Home' },
-  { to: '/dashboard', icon: BarChart3, label: 'Dashboard' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
-  { to: '/team', icon: Users, label: 'Team', hasSubmenu: true },
-  { to: '/about', icon: Info, label: 'About' },
+  { to: '/', icon: ChartSpline, label: 'Dashboard' },
+  { to: '/Ventas', icon: BarChart3, label: 'Ventas' },
+  { to: '/Inventario', icon: PackagePlus, label: 'Control de Inventario' },
+  { to: '/Reportes', icon: FileText, label: 'Reportes', hasSubmenu: true },
+  { to: '/Orden', icon: Truck, label: 'Orden de Proveedor' },
+  { to: '/VentasServicio', icon: ShoppingBasket, label: 'Inventario Servicio' },
+  { to: '/clientes', icon: Users, label: 'Clientes' },
 
 ];
 

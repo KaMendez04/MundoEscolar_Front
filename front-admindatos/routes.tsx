@@ -1,35 +1,67 @@
 import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
-import RootLayout from "./src/components/RootLayout";
-import HomePage from "./src/page/HomePage";
-import AboutPage from "./src/page/AboutPage";
+import RootLayout from "./src/components/MainComponents/RootLayout";
+
+import AboutPage from "./src/page/OrdenPage";
 import dashboardPage from "./src/page/dashboardPage";
+import VentasPage from "./src/page/VentasPage";
+import InventarioPage from "./src/page/InventarioPage";
+import VentasServicio  from "./src/page/ventasServio";
+import ClientePege from "./src/page/clientesPage";
+
+
 
 // 1. Definir root
+import ReportesPage from "./src/page/ReportesPage";
 const rootRoute = createRootRoute({
   component: RootLayout,
 });
 
+const ClienteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/clientes",
+  component: ClientePege,
+});          
+
+
+
 // 2. Definir rutas hijas
-const homeRoute = createRoute({
+const DashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: HomePage,
-});
-
-const aboutRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/about",
-  component: AboutPage,
-});
-const dashboardRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/dashboard",
   component: dashboardPage,
 });
 
+const VentasRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/Ventas",
+  component: VentasPage,
+});
 
+const InventarioRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/Inventario",
+  component: InventarioPage,
+});
+
+const ReportesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+ path: "/Reportes",
+  component: ReportesPage,
+});
+
+const OrdenRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/Orden",
+  component: AboutPage,
+});
+
+const VentasServicioRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/VentasServicio",
+  component: VentasServicio,
+});
 // 3. Añadir al root
-rootRoute.addChildren([homeRoute, aboutRoute, dashboardRoute]);
+rootRoute.addChildren([DashboardRoute, VentasRoute, InventarioRoute, ReportesRoute, OrdenRoute, VentasServicioRoute , ClienteRoute]);
 
 // 4. Crear router
 const router = createRouter({
