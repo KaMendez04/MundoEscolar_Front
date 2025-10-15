@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Search, Users, FileText, Package, X, Edit2, CheckCircle, XCircle, AlertCircle, Calendar, Filter, ChevronLeft, ChevronRight, Trash2, ShoppingCart } from 'lucide-react';
+import { Plus, Search, Users, FileText, X, Edit2, CheckCircle, XCircle, AlertCircle, Calendar, Filter, ChevronLeft, ChevronRight, Trash2, ShoppingCart } from 'lucide-react';
 import { useProveedores } from '../hooks/useProveedores';
 import { useOrdenPedidos } from '../hooks/useOrdenPedidos';
 import { useDetalleOrdenPedido } from '../hooks/useDetalleOrdenPedido';
@@ -79,8 +79,7 @@ const ProveedoresOrdenesModule = () => {
   const [formDataProveedor, setFormDataProveedor] = useState<CreateProveedorDto>({
     cedulaJuridica: '',
     nombre: '',
-    telefono: '',
-    condicionesPago: false,
+    telefono: ''
   });
   const [formErrorProveedor, setFormErrorProveedor] = useState('');
   const [searchProveedores, setSearchProveedores] = useState('');
@@ -155,16 +154,14 @@ const ProveedoresOrdenesModule = () => {
       setFormDataProveedor({
         cedulaJuridica: proveedor.cedulaJuridica,
         nombre: proveedor.nombre,
-        telefono: proveedor.telefono,
-        condicionesPago: proveedor.condicionesPago,
+        telefono: proveedor.telefono
       });
     } else {
       setEditingProveedor(null);
       setFormDataProveedor({
         cedulaJuridica: '',
         nombre: '',
-        telefono: '',
-        condicionesPago: false,
+        telefono: ''
       });
     }
     setFormErrorProveedor('');
@@ -491,7 +488,6 @@ const ProveedoresOrdenesModule = () => {
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cédula</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nombre</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Teléfono</th>
-                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Condiciones</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
                           </tr>
@@ -502,13 +498,6 @@ const ProveedoresOrdenesModule = () => {
                               <td className="px-4 py-3 text-sm text-gray-700 font-medium">{proveedor.cedulaJuridica}</td>
                               <td className="px-4 py-3 text-sm text-gray-900 font-medium">{proveedor.nombre}</td>
                               <td className="px-4 py-3 text-sm text-gray-600">{proveedor.telefono}</td>
-                              <td className="px-4 py-3 text-sm">
-                                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                  proveedor.condicionesPago ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
-                                }`}>
-                                  {proveedor.condicionesPago ? 'Crédito' : 'Contado'}
-                                </span>
-                              </td>
                               <td className="px-4 py-3 text-sm">
                                 <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                                   proveedor.estado ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
@@ -920,19 +909,6 @@ const ProveedoresOrdenesModule = () => {
                     required
                     maxLength={8}
                   />
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="condicionesPago"
-                    checked={formDataProveedor.condicionesPago}
-                    onChange={(e) => setFormDataProveedor({ ...formDataProveedor, condicionesPago: e.target.checked })}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                  />
-                  <label htmlFor="condicionesPago" className="text-sm font-medium text-gray-700">
-                    Condiciones de Pago a Crédito
-                  </label>
                 </div>
 
                 <div className="flex gap-3 pt-4">

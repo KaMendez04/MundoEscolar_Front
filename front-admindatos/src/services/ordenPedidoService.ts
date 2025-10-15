@@ -10,12 +10,12 @@ import type {
 
 export const ordenPedidoService = {
   insertarOrdenPedido: async (orden: CreateOrdenPedidoDto): Promise<string[]> => {
-    const response = await client.post<string[]>('/OrdenPedido/Insertar', orden);
+    const response = await client.post<string[]>('/OrdenPedido/', orden);
     return response.data;
   },
 
   cambiarEstadoPago: async (estado: UpdateEstadoOrdenPedidoDto): Promise<string[]> => {
-    const response = await client.put<string[]>('/OrdenPedido/CambiarEstado', estado);
+    const response = await client.patch<string[]>('/OrdenPedido/CambiarEstado', estado);
     return response.data;
   },
 
