@@ -13,6 +13,7 @@ import {
   PanelLeftOpen,
   ChartSpline,
   ShoppingBasket,
+  Users,
 } from "lucide-react";
 
 // ✅ Definimos las props esperadas simplificadas
@@ -29,6 +30,7 @@ const routeTitles: Record<string, string> = {
   '/Reportes': 'Reportes',
   '/Orden': 'Orden de Proveedor',
   '/VentasServicio': 'Inventario Servicio',
+  '/clientes': 'Clientes',
 };
 
 // ✅ Configuración de navegación
@@ -39,6 +41,7 @@ const navigationItems = [
   { to: '/Reportes', icon: FileText, label: 'Reportes', hasSubmenu: true },
   { to: '/Orden', icon: Truck, label: 'Orden de Proveedor' },
   { to: '/VentasServicio', icon: ShoppingBasket, label: 'Inventario Servicio' },
+  { to: '/clientes', icon: Users, label: 'Clientes' },
 
 ];
 

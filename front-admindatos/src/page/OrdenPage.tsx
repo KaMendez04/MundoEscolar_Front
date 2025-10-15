@@ -1,10 +1,10 @@
 // AboutPage.tsx
-import { OrdenProveedor } from "../components/OrdenProveedor";
+import ProveedoresOrdenesModule from "../components/OrdenProveedor";
 
 const AboutPage = () => {
   return (
     <div className="p-4">
-      <OrdenProveedor />
+      <ProveedoresOrdenesModule />
 
 
     </div>
