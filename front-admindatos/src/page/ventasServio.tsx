@@ -1,10 +1,11 @@
+import ServiciosModule from "../components/Servicios";
 
 
 
  const VentasServicio = () => {
     return (
-        <div>
-            <h1>Ventas de Servicio</h1>
+        <div className="p-4">
+            <ServiciosModule />
         </div>
     );
 }

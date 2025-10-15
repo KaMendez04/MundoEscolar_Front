@@ -28,9 +28,9 @@ export const useServicios = () => {
   const createServicio = async (servicio: CreateServicioDto) => {
     try {
       setError(null);
-      const newServicio = await serviciosService.createServicio(servicio);
-      setServicios([...servicios, newServicio]);
-      return newServicio;
+      await serviciosService.createServicio(servicio);
+      // Vuelve a traer todos los servicios del backend
+      await fetchServicios();
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al crear servicio';
       setError(errorMsg);
@@ -41,9 +41,9 @@ export const useServicios = () => {
   const updateServicio = async (id: number, servicio: UpdateServicioDto) => {
     try {
       setError(null);
-      const updatedServicio = await serviciosService.updateServicio(id, servicio);
-      setServicios(servicios.map(s => s.idServicio === id ? updatedServicio : s));
-      return updatedServicio;
+      await serviciosService.updateServicio(id, servicio);
+      //  Refresca la lista con los datos actualizados
+      await fetchServicios();
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al actualizar servicio';
       setError(errorMsg);
@@ -55,7 +55,8 @@ export const useServicios = () => {
     try {
       setError(null);
       await serviciosService.deleteServicio(id);
-      setServicios(servicios.filter(s => s.idServicio !== id));
+      // 👇 También recarga después de eliminar
+      await fetchServicios();
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al eliminar servicio';
       setError(errorMsg);
