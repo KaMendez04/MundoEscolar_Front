@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ShoppingCart, Plus, Minus, Trash2, Package, Briefcase, Search, X, ShoppingBag } from 'lucide-react';
 import { useProductos } from '../hooks/useProdutos';
-import { useServicios } from '../hooks/seServicios';
+import { useServicios } from '../hooks/Servicios';
 
 type ItemVenta = {
   id: string;

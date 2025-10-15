@@ -3,15 +3,16 @@ import { useState } from "react";
 import { 
   Search, 
   BarChart3, 
-  Settings, 
-  Users, 
+  PackagePlus,
+  FileText, 
   ChevronRight, 
-  Info, 
+  Truck, 
   LogOut, 
   Bell,
   PanelLeftClose,
   PanelLeftOpen,
-  Home
+  ChartSpline,
+  ShoppingBasket,
 } from "lucide-react";
 
 // ✅ Definimos las props esperadas simplificadas
@@ -27,15 +28,17 @@ const routeTitles: Record<string, string> = {
   '/Inventario': 'Control de Inventario',
   '/Reportes': 'Reportes',
   '/Orden': 'Orden de Proveedor',
+  '/VentasServicio': 'Inventario Servicio',
 };
 
 // ✅ Configuración de navegación
 const navigationItems = [
-  { to: '/', icon: Home, label: 'Dashboard' },
+  { to: '/', icon: ChartSpline, label: 'Dashboard' },
   { to: '/Ventas', icon: BarChart3, label: 'Ventas' },
-  { to: '/Inventario', icon: Settings, label: 'Control de Inventario' },
-  { to: '/Reportes', icon: Users, label: 'Reportes', hasSubmenu: true },
-  { to: '/Orden', icon: Info, label: 'Orden de Proveedor' },
+  { to: '/Inventario', icon: PackagePlus, label: 'Control de Inventario' },
+  { to: '/Reportes', icon: FileText, label: 'Reportes', hasSubmenu: true },
+  { to: '/Orden', icon: Truck, label: 'Orden de Proveedor' },
+  { to: '/VentasServicio', icon: ShoppingBasket, label: 'Inventario Servicio' },
 
 ];
 
