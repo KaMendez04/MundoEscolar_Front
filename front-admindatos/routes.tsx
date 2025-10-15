@@ -6,11 +6,23 @@ import dashboardPage from "./src/page/dashboardPage";
 import VentasPage from "./src/page/VentasPage";
 import InventarioPage from "./src/page/InventarioPage";
 import VentasServicio  from "./src/page/ventasServio";
+import ClientePege from "./src/page/clientesPage";
+
+
+
 // 1. Definir root
 import ReportesPage from "./src/page/ReportesPage";
 const rootRoute = createRootRoute({
   component: RootLayout,
 });
+
+const ClienteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/clientes",
+  component: ClientePege,
+});          
+
+
 
 // 2. Definir rutas hijas
 const DashboardRoute = createRoute({
@@ -49,7 +61,7 @@ const VentasServicioRoute = createRoute({
   component: VentasServicio,
 });
 // 3. Añadir al root
-rootRoute.addChildren([DashboardRoute, VentasRoute, InventarioRoute, ReportesRoute, OrdenRoute, VentasServicioRoute]);
+rootRoute.addChildren([DashboardRoute, VentasRoute, InventarioRoute, ReportesRoute, OrdenRoute, VentasServicioRoute , ClienteRoute]);
 
 // 4. Crear router
 const router = createRouter({
