@@ -4,16 +4,16 @@ import client from '../Client/ConfigClient'; // Assuming you have an axios clien
 
 export const clienteService = {
   getAllClientes: async (): Promise<Cliente[]> => {
-    const response = await client.get<Cliente[]>('api/Clientes');
+    const response = await client.get<Cliente[]>('/Clientes');
     return response.data;
   },
 
   getClienteByCedula: async (cedula: number): Promise<Cliente> => {
-    const response = await client.get<Cliente>(`api/Clientes/${cedula}`);
+    const response = await client.get<Cliente>(`/Clientes/${cedula}`);
     return response.data;
   },
 
   updateCliente: async (cliente: UpdateClienteDto): Promise<void> => {
-    await client.put(`api/Clientes`, cliente);
+    await client.put(`/Clientes`, cliente);
   },
 };

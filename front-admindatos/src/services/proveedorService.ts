@@ -10,22 +10,22 @@ import type {
 
 export const proveedorService = {
   insertarProveedor: async (proveedor: CreateProveedorDto): Promise<string[]> => {
-    const response = await client.post<string[]>('/Proveedor/Insertar', proveedor);
+    const response = await client.post<string[]>('/Proveedor/', proveedor);
     return response.data;
   },
 
   actualizarProveedor: async (proveedor: UpdateProveedorDto): Promise<string[]> => {
-    const response = await client.put<string[]>('/Proveedor/Actualizar', proveedor);
+    const response = await client.put<string[]>('/Proveedor/', proveedor);
     return response.data;
   },
 
   desactivarProveedor: async (cedulaJuridica: string): Promise<string[]> => {
-    const response = await client.put<string[]>(`/Proveedor/Desactivar/${cedulaJuridica}`);
+    const response = await client.patch<string[]>(`/Proveedor/Desactivar/${cedulaJuridica}`);
     return response.data;
   },
 
   activarProveedor: async (cedulaJuridica: string): Promise<string[]> => {
-    const response = await client.put<string[]>(`/Proveedor/Activar/${cedulaJuridica}`);
+    const response = await client.patch<string[]>(`/Proveedor/Activar/${cedulaJuridica}`);
     return response.data;
   },
 
