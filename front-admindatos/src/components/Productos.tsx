@@ -1,20 +1,21 @@
-import { useState } from 'react';
-import { Plus, Search, Package, Tags, AlertCircle, X, Edit2, Trash2, CheckCircle } from 'lucide-react';
-import { useProductos } from '../hooks/useProdutos';
-import { useCategorias } from '../hooks/useCategoria';
-import type { Producto, CreateProductoDto } from '../types/produto';
-import type { Categoria, CreateCategoriaDto } from '../types/categoria';
+import type React from "react"
+import { useState } from "react"
+import { Plus, Search, Package, Tags, AlertCircle, X, Edit2, Trash2, CheckCircle } from "lucide-react"
+import { useProductos } from "../hooks/useProdutos"
+import { useCategorias } from "../hooks/useCategoria"
+import type { Producto, CreateProductoDto } from "../types/produto"
+import type { Categoria, CreateCategoriaDto } from "../types/categoria"
 
 // Modal de Confirmación
-const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = 'danger' }: any) => {
-  if (!isOpen) return null;
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "danger" }: any) => {
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-xs bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            {type === 'danger' ? (
+            {type === "danger" ? (
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
                 <AlertCircle className="text-red-600" size={24} />
               </div>
@@ -35,13 +36,11 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = 'dang
             </button>
             <button
               onClick={() => {
-                onConfirm();
-                onClose();
+                onConfirm()
+                onClose()
               }}
               className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-white transition ${
-                type === 'danger'
-                  ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                type === "danger" ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
               }`}
             >
               Confirmar
@@ -50,180 +49,197 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = 'dang
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 const InventarioModule = () => {
-  const [activeTab, setActiveTab] = useState<'productos' | 'categorias'>('productos');
-  
+  const [activeTab, setActiveTab] = useState<"productos" | "categorias">("productos")
+
   // Productos
-  const { productos, loading: loadingProductos, error: errorProductos, createProducto, updateProducto, deleteProducto } = useProductos();
-  const [searchTermProductos, setSearchTermProductos] = useState('');
-  const [showModalProducto, setShowModalProducto] = useState(false);
-  const [editingProducto, setEditingProducto] = useState<Producto | null>(null);
+  const {
+    productos,
+    loading: loadingProductos,
+    error: errorProductos,
+    createProducto,
+    updateProducto,
+    deleteProducto,
+  } = useProductos()
+  const [searchTermProductos, setSearchTermProductos] = useState("")
+  const [showModalProducto, setShowModalProducto] = useState(false)
+  const [editingProducto, setEditingProducto] = useState<Producto | null>(null)
   const [formDataProducto, setFormDataProducto] = useState<CreateProductoDto>({
-    nombre: '',
-    descripcion: '',
+    nombre: "",
+    descripcion: "",
     stock: 0,
     costo: 0,
     idCategoria: 1,
-  });
-  const [formErrorProducto, setFormErrorProducto] = useState('');
+  })
+  const [formErrorProducto, setFormErrorProducto] = useState("")
 
   // Categorías
-  const { categorias, loading: loadingCategorias, error: errorCategorias, createCategoria, updateCategoria, deleteCategoria, fetchCategorias } = useCategorias();
-  const [searchTermCategorias, setSearchTermCategorias] = useState('');
-  const [showModalCategoria, setShowModalCategoria] = useState(false);
-  const [editingCategoria, setEditingCategoria] = useState<Categoria | null>(null);
+  const {
+    categorias,
+    loading: loadingCategorias,
+    error: errorCategorias,
+    createCategoria,
+    updateCategoria,
+    deleteCategoria,
+    fetchCategorias,
+  } = useCategorias()
+  const [searchTermCategorias, setSearchTermCategorias] = useState("")
+  const [showModalCategoria, setShowModalCategoria] = useState(false)
+  const [editingCategoria, setEditingCategoria] = useState<Categoria | null>(null)
   const [formDataCategoria, setFormDataCategoria] = useState<CreateCategoriaDto>({
-    nombre: '',
-    descripcion: '',
-  });
-  const [formErrorCategoria, setFormErrorCategoria] = useState('');
+    nombre: "",
+    descripcion: "",
+  })
+  const [formErrorCategoria, setFormErrorCategoria] = useState("")
 
   // Estados para modales de confirmación
   const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    onConfirm: () => void;
-    type: 'danger' | 'success';
+    isOpen: boolean
+    title: string
+    message: string
+    onConfirm: () => void
+    type: "danger" | "success"
   }>({
     isOpen: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     onConfirm: () => {},
-    type: 'danger',
-  });
+    type: "danger",
+  })
 
   // Filtros
-  const filteredProductos = productos.filter(p =>
-    p.nombre.toLowerCase().includes(searchTermProductos.toLowerCase()) ||
-    p.descripcion.toLowerCase().includes(searchTermProductos.toLowerCase())
-  );
+  const filteredProductos = productos.filter(
+    (p) =>
+      p.nombre.toLowerCase().includes(searchTermProductos.toLowerCase()) ||
+      p.descripcion.toLowerCase().includes(searchTermProductos.toLowerCase()),
+  )
 
-  const filteredCategorias = categorias.filter(c =>
-    c.nombre.toLowerCase().includes(searchTermCategorias.toLowerCase()) ||
-    (c.descripcion && c.descripcion.toLowerCase().includes(searchTermCategorias.toLowerCase()))
-  );
+  const filteredCategorias = categorias.filter(
+    (c) =>
+      c.nombre.toLowerCase().includes(searchTermCategorias.toLowerCase()) ||
+      (c.descripcion && c.descripcion.toLowerCase().includes(searchTermCategorias.toLowerCase())),
+  )
 
   // Handlers Productos
   const handleOpenModalProducto = (producto?: Producto) => {
     if (producto) {
-      setEditingProducto(producto);
+      setEditingProducto(producto)
       setFormDataProducto({
         nombre: producto.nombre,
         descripcion: producto.descripcion,
         stock: producto.stock,
         costo: producto.costo,
         idCategoria: producto.idCategoria,
-      });
+      })
     } else {
-      setEditingProducto(null);
-      setFormDataProducto({ 
-        nombre: '', 
-        descripcion: '', 
-        stock: 0, 
-        costo: 0, 
-        idCategoria: categorias.length > 0 ? categorias[0].idCategoria : 1 
-      });
+      setEditingProducto(null)
+      setFormDataProducto({
+        nombre: "",
+        descripcion: "",
+        stock: 0,
+        costo: 0,
+        idCategoria: categorias.length > 0 ? categorias[0].idCategoria : 1,
+      })
     }
-    setFormErrorProducto('');
-    setShowModalProducto(true);
-  };
+    setFormErrorProducto("")
+    setShowModalProducto(true)
+  }
 
   const handleCloseModalProducto = () => {
-    setShowModalProducto(false);
-    setEditingProducto(null);
-    setFormErrorProducto('');
-  };
+    setShowModalProducto(false)
+    setEditingProducto(null)
+    setFormErrorProducto("")
+  }
 
   const handleSubmitProducto = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormErrorProducto('');
+    e.preventDefault()
+    setFormErrorProducto("")
 
     try {
       if (editingProducto) {
-        await updateProducto(editingProducto.idProducto, formDataProducto);
+        await updateProducto(editingProducto.idProducto, formDataProducto)
       } else {
-        await createProducto(formDataProducto);
+        await createProducto(formDataProducto)
       }
-      handleCloseModalProducto();
+      handleCloseModalProducto()
     } catch (err: any) {
-      setFormErrorProducto(err.message);
+      setFormErrorProducto(err.message)
     }
-  };
+  }
 
   const handleDeleteProducto = async (id: number) => {
     setConfirmModal({
       isOpen: true,
-      title: '¿Eliminar Producto?',
-      message: 'Esta acción no se puede deshacer. El producto será eliminado permanentemente del sistema.',
-      type: 'danger',
+      title: "¿Eliminar Producto?",
+      message: "Esta acción no se puede deshacer. El producto será eliminado permanentemente del sistema.",
+      type: "danger",
       onConfirm: async () => {
         try {
-          await deleteProducto(id);
+          await deleteProducto(id)
         } catch (err: any) {
-          alert(err.message);
+          alert(err.message)
         }
       },
-    });
-  };
+    })
+  }
 
   // Handlers Categorías
   const handleOpenModalCategoria = (categoria?: Categoria) => {
     if (categoria) {
-      setEditingCategoria(categoria);
+      setEditingCategoria(categoria)
       setFormDataCategoria({
         nombre: categoria.nombre,
-        descripcion: categoria.descripcion || '',
-      });
+        descripcion: categoria.descripcion || "",
+      })
     } else {
-      setEditingCategoria(null);
-      setFormDataCategoria({ nombre: '', descripcion: '' });
+      setEditingCategoria(null)
+      setFormDataCategoria({ nombre: "", descripcion: "" })
     }
-    setFormErrorCategoria('');
-    setShowModalCategoria(true);
-  };
+    setFormErrorCategoria("")
+    setShowModalCategoria(true)
+  }
 
   const handleCloseModalCategoria = () => {
-    setShowModalCategoria(false);
-    setEditingCategoria(null);
-    setFormErrorCategoria('');
-  };
+    setShowModalCategoria(false)
+    setEditingCategoria(null)
+    setFormErrorCategoria("")
+  }
 
   const handleSubmitCategoria = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormErrorCategoria('');
+    e.preventDefault()
+    setFormErrorCategoria("")
 
     try {
       if (editingCategoria) {
-        await updateCategoria(editingCategoria.idCategoria, formDataCategoria);
+        await updateCategoria(editingCategoria.idCategoria, formDataCategoria)
       } else {
-        await createCategoria(formDataCategoria);
+        await createCategoria(formDataCategoria)
       }
-      handleCloseModalCategoria();
-      await fetchCategorias();
+      handleCloseModalCategoria()
+      await fetchCategorias()
     } catch (err: any) {
-      setFormErrorCategoria(err.message);
+      setFormErrorCategoria(err.message)
     }
-  };
+  }
 
   const handleDeleteCategoria = async (id: number) => {
     setConfirmModal({
       isOpen: true,
-      title: '¿Eliminar Categoría?',
-      message: 'Esta acción eliminará la categoría y puede afectar los productos asociados. ¿Desea continuar?',
-      type: 'danger',
+      title: "¿Eliminar Categoría?",
+      message: "Esta acción eliminará la categoría y puede afectar los productos asociados. ¿Desea continuar?",
+      type: "danger",
       onConfirm: async () => {
         try {
-          await deleteCategoria(id);
+          await deleteCategoria(id)
         } catch (err: any) {
-          alert(err.message);
+          alert(err.message)
         }
       },
-    });
-  };
+    })
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -237,22 +253,22 @@ const InventarioModule = () => {
           {/* Tabs */}
           <div className="flex gap-1 px-6 pt-4 border-b border-gray-200">
             <button
-              onClick={() => setActiveTab('productos')}
+              onClick={() => setActiveTab("productos")}
               className={`flex items-center gap-2 px-5 py-3 font-medium transition rounded-t-lg ${
-                activeTab === 'productos'
-                  ? 'bg-white text-blue-600 border-t-2 border-x border-blue-600 border-b-0'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                activeTab === "productos"
+                  ? "bg-white text-[#4a9d9d] border-t-2 border-x border-[#4a9d9d] border-b-0"
+                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
               }`}
             >
               <Package size={18} />
               Productos
             </button>
             <button
-              onClick={() => setActiveTab('categorias')}
+              onClick={() => setActiveTab("categorias")}
               className={`flex items-center gap-2 px-5 py-3 font-medium transition rounded-t-lg ${
-                activeTab === 'categorias'
-                  ? 'bg-white text-blue-600 border-t-2 border-x border-blue-600 border-b-0'
-                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                activeTab === "categorias"
+                  ? "bg-white text-[#4a9d9d] border-t-2 border-x border-[#4a9d9d] border-b-0"
+                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
               }`}
             >
               <Tags size={18} />
@@ -262,7 +278,7 @@ const InventarioModule = () => {
 
           <div className="p-6">
             {/* Productos Tab */}
-            {activeTab === 'productos' && (
+            {activeTab === "productos" && (
               <>
                 <div className="flex justify-between items-center mb-6">
                   <div>
@@ -271,7 +287,7 @@ const InventarioModule = () => {
                   </div>
                   <button
                     onClick={() => handleOpenModalProducto()}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                    className="flex items-center gap-2 bg-[#4a9d9d] text-white px-4 py-2.5 rounded-lg hover:bg-[#5aadad] transition shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
                     disabled={categorias.length === 0}
                   >
                     <Plus size={18} />
@@ -293,7 +309,7 @@ const InventarioModule = () => {
                     placeholder="Buscar por nombre o descripción..."
                     value={searchTermProductos}
                     onChange={(e) => setSearchTermProductos(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                   />
                 </div>
 
@@ -306,7 +322,7 @@ const InventarioModule = () => {
 
                 {loadingProductos ? (
                   <div className="text-center py-12">
-                    <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-blue-600 border-t-transparent"></div>
+                    <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-[#4a9d9d] border-t-transparent"></div>
                     <p className="mt-4 text-gray-600 text-sm">Cargando productos...</p>
                   </div>
                 ) : (
@@ -314,13 +330,24 @@ const InventarioModule = () => {
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                          
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nombre</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Descripción</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Stock</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Costo</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Categoría</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Nombre
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Descripción
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Stock
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Costo
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Categoría
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Acciones
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -329,25 +356,31 @@ const InventarioModule = () => {
                             <td className="px-4 py-3 text-sm font-medium text-gray-900">{producto.nombre}</td>
                             <td className="px-4 py-3 text-sm text-gray-600">{producto.descripcion}</td>
                             <td className="px-4 py-3 text-sm text-gray-700">
-                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                producto.stock > 10 ? 'bg-green-100 text-green-700' :
-                                producto.stock > 0 ? 'bg-amber-100 text-amber-700' :
-                                'bg-red-100 text-red-700'
-                              }`}>
+                              <span
+                                className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                  producto.stock > 10
+                                    ? "bg-green-100 text-green-700"
+                                    : producto.stock > 0
+                                      ? "bg-amber-100 text-amber-700"
+                                      : "bg-red-100 text-red-700"
+                                }`}
+                              >
                                 {producto.stock}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-700 font-medium">₡{producto.costo.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700 font-medium">
+                              ₡{producto.costo.toFixed(2)}
+                            </td>
                             <td className="px-4 py-3 text-sm text-gray-600">
-                              <span className="inline-flex px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs font-medium">
-                                {categorias.find(c => c.idCategoria === producto.idCategoria)?.nombre || 'N/A'}
+                              <span className="inline-flex px-2 py-1 bg-[#4a9d9d]/10 text-[#4a9d9d] rounded-md text-xs font-medium">
+                                {categorias.find((c) => c.idCategoria === producto.idCategoria)?.nombre || "N/A"}
                               </span>
                             </td>
                             <td className="px-4 py-3 text-sm">
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => handleOpenModalProducto(producto)}
-                                  className="text-blue-600 hover:text-blue-800 p-1.5 hover:bg-blue-50 rounded-lg transition"
+                                  className="text-[#4a9d9d] hover:text-[#5aadad] p-1.5 hover:bg-[#4a9d9d]/10 rounded-lg transition"
                                   title="Editar"
                                 >
                                   <Edit2 size={16} />
@@ -377,7 +410,7 @@ const InventarioModule = () => {
             )}
 
             {/* Categorías Tab */}
-            {activeTab === 'categorias' && (
+            {activeTab === "categorias" && (
               <>
                 <div className="flex justify-between items-center mb-6">
                   <div>
@@ -386,7 +419,7 @@ const InventarioModule = () => {
                   </div>
                   <button
                     onClick={() => handleOpenModalCategoria()}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition shadow-sm font-medium"
+                    className="flex items-center gap-2 bg-[#4a9d9d] text-white px-4 py-2.5 rounded-lg hover:bg-[#5aadad] transition shadow-sm font-medium"
                   >
                     <Plus size={18} />
                     Nueva Categoría
@@ -400,7 +433,7 @@ const InventarioModule = () => {
                     placeholder="Buscar por nombre o descripción..."
                     value={searchTermCategorias}
                     onChange={(e) => setSearchTermCategorias(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                   />
                 </div>
 
@@ -413,7 +446,7 @@ const InventarioModule = () => {
 
                 {loadingCategorias ? (
                   <div className="text-center py-12">
-                    <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-blue-600 border-t-transparent"></div>
+                    <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-[#4a9d9d] border-t-transparent"></div>
                     <p className="mt-4 text-gray-600 text-sm">Cargando categorías...</p>
                   </div>
                 ) : (
@@ -421,23 +454,27 @@ const InventarioModule = () => {
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                         
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nombre</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Descripción</th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Nombre
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Descripción
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Acciones
+                          </th>
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
                         {filteredCategorias.map((categoria) => (
                           <tr key={categoria.idCategoria} className="hover:bg-gray-50 transition">
-                           
                             <td className="px-4 py-3 text-sm font-medium text-gray-900">{categoria.nombre}</td>
-                            <td className="px-4 py-3 text-sm text-gray-600">{categoria.descripcion || 'N/A'}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">{categoria.descripcion || "N/A"}</td>
                             <td className="px-4 py-3 text-sm">
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => handleOpenModalCategoria(categoria)}
-                                  className="text-blue-600 hover:text-blue-800 p-1.5 hover:bg-blue-50 rounded-lg transition"
+                                  className="text-[#4a9d9d] hover:text-[#5aadad] p-1.5 hover:bg-[#4a9d9d]/10 rounded-lg transition"
                                   title="Editar"
                                 >
                                   <Edit2 size={16} />
@@ -475,7 +512,7 @@ const InventarioModule = () => {
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-800">
-                {editingProducto ? 'Editar Producto' : 'Nuevo Producto'}
+                {editingProducto ? "Editar Producto" : "Nuevo Producto"}
               </h2>
               <button onClick={handleCloseModalProducto} className="text-gray-400 hover:text-gray-600 transition">
                 <X size={22} />
@@ -497,7 +534,7 @@ const InventarioModule = () => {
                     type="text"
                     value={formDataProducto.nombre}
                     onChange={(e) => setFormDataProducto({ ...formDataProducto, nombre: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                   />
                 </div>
@@ -507,7 +544,7 @@ const InventarioModule = () => {
                   <textarea
                     value={formDataProducto.descripcion}
                     onChange={(e) => setFormDataProducto({ ...formDataProducto, descripcion: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     rows={3}
                     required
                   />
@@ -518,8 +555,10 @@ const InventarioModule = () => {
                   <input
                     type="number"
                     value={formDataProducto.stock}
-                    onChange={(e) => setFormDataProducto({ ...formDataProducto, stock: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    onChange={(e) =>
+                      setFormDataProducto({ ...formDataProducto, stock: Number.parseInt(e.target.value) || 0 })
+                    }
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     min="0"
                     required
                   />
@@ -531,8 +570,10 @@ const InventarioModule = () => {
                     type="number"
                     step="0.01"
                     value={formDataProducto.costo}
-                    onChange={(e) => setFormDataProducto({ ...formDataProducto, costo: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    onChange={(e) =>
+                      setFormDataProducto({ ...formDataProducto, costo: Number.parseFloat(e.target.value) || 0 })
+                    }
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     min="0"
                     required
                   />
@@ -542,8 +583,10 @@ const InventarioModule = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Categoría *</label>
                   <select
                     value={formDataProducto.idCategoria}
-                    onChange={(e) => setFormDataProducto({ ...formDataProducto, idCategoria: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    onChange={(e) =>
+                      setFormDataProducto({ ...formDataProducto, idCategoria: Number.parseInt(e.target.value) })
+                    }
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                   >
                     {categorias.map((cat) => (
@@ -564,9 +607,9 @@ const InventarioModule = () => {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm"
+                    className="flex-1 px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition shadow-sm"
                   >
-                    {editingProducto ? 'Actualizar' : 'Crear'}
+                    {editingProducto ? "Actualizar" : "Crear"}
                   </button>
                 </div>
               </form>
@@ -581,7 +624,7 @@ const InventarioModule = () => {
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-800">
-                {editingCategoria ? 'Editar Categoría' : 'Nueva Categoría'}
+                {editingCategoria ? "Editar Categoría" : "Nueva Categoría"}
               </h2>
               <button onClick={handleCloseModalCategoria} className="text-gray-400 hover:text-gray-600 transition">
                 <X size={22} />
@@ -603,7 +646,7 @@ const InventarioModule = () => {
                     type="text"
                     value={formDataCategoria.nombre}
                     onChange={(e) => setFormDataCategoria({ ...formDataCategoria, nombre: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                   />
                 </div>
@@ -613,7 +656,7 @@ const InventarioModule = () => {
                   <textarea
                     value={formDataCategoria.descripcion}
                     onChange={(e) => setFormDataCategoria({ ...formDataCategoria, descripcion: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     rows={3}
                   />
                 </div>
@@ -628,9 +671,9 @@ const InventarioModule = () => {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm"
+                    className="flex-1 px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition shadow-sm"
                   >
-                    {editingCategoria ? 'Actualizar' : 'Crear'}
+                    {editingCategoria ? "Actualizar" : "Crear"}
                   </button>
                 </div>
               </form>
@@ -649,7 +692,7 @@ const InventarioModule = () => {
         type={confirmModal.type}
       />
     </div>
-  );
-};
+  )
+}
 
-export default InventarioModule;
+export default InventarioModule

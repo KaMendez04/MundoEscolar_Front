@@ -1,4 +1,4 @@
-import React from 'react';
+import type React from "react"
 import {
   BarChart,
   Bar,
@@ -12,88 +12,76 @@ import {
   Cell,
   LineChart,
   Line,
-} from "recharts";
-import { BookOpen, Users, TrendingUp, Calendar } from "lucide-react";
+} from "recharts"
+import { BookOpen, Users, TrendingUp, Calendar } from "lucide-react"
 
 // Interfaces para TypeScript
 interface StatData {
-  title: string;
-  value: string;
-  change: string;
-  icon: React.ElementType;
-  color: string;
+  title: string
+  value: string
+  change: string
+  icon: React.ElementType
+  color: string
 }
 
 interface LoanData {
-  name: string;
-  prestamos: number;
-  devoluciones: number;
+  name: string
+  prestamos: number
+  devoluciones: number
 }
 
 interface CategoryData {
-  name: string;
-  value: number;
-  color: string;
+  name: string
+  value: number
+  color: string
 }
 
 interface WeeklyActivity {
-  day: string;
-  visitas: number;
+  day: string
+  visitas: number
 }
 
 interface PopularBook {
-  title: string;
-  author: string;
-  loans: number;
+  title: string
+  author: string
+  loans: number
 }
 
 // Componente Card personalizado
 const Card: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
-  <div className={`bg-white rounded-lg border border-slate-200 shadow-sm ${className}`}>
-    {children}
-  </div>
-);
+  <div className={`bg-white rounded-lg border border-slate-200 shadow-sm ${className}`}>{children}</div>
+)
 
 const CardHeader: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
-  <div className={`p-6 pb-4 ${className}`}>
-    {children}
-  </div>
-);
+  <div className={`p-6 pb-4 ${className}`}>{children}</div>
+)
 
 const CardContent: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
-  <div className={`p-6 pt-0 ${className}`}>
-    {children}
-  </div>
-);
+  <div className={`p-6 pt-0 ${className}`}>{children}</div>
+)
 
 const CardTitle: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
-  <h3 className={`text-lg font-semibold leading-none tracking-tight ${className}`}>
-    {children}
-  </h3>
-);
+  <h3 className={`text-lg font-semibold leading-none tracking-tight ${className}`}>{children}</h3>
+)
 
 const CardDescription: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
-  <p className={`text-sm text-slate-600 mt-1 ${className}`}>
-    {children}
-  </p>
-);
+  <p className={`text-sm text-slate-600 mt-1 ${className}`}>{children}</p>
+)
 
 // Componente Badge personalizado
 const Badge: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}>
     {children}
   </span>
-);
-
-
+)
 
 // Datos de ejemplo
 const statsData: StatData[] = [
-  { title: "Total de Libros", value: "2,847", change: "+12%", icon: BookOpen, color: "text-emerald-600" },
-  { title: "Usuarios Activos", value: "1,234", change: "+8%", icon: Users, color: "text-blue-600" },
-  { title: "Préstamos del Mes", value: "456", change: "+23%", icon: TrendingUp, color: "text-purple-600" },
-  { title: "Eventos Programados", value: "12", change: "+3%", icon: Calendar, color: "text-orange-600" },
-];
+  { title: "Total de Libros", value: "2,847", change: "+12%", icon: BookOpen, color: "text-[#4a9d9d]" },
+  { title: "Usuarios Activos", value: "1,234", change: "+8%", icon: Users, color: "text-[#9d8560]" },
+  { title: "Préstamos del Mes", value: "456", change: "+23%", icon: TrendingUp, color: "text-[#4a9d9d]" },
+  { title: "Eventos Programados", value: "12", change: "+3%", icon: Calendar, color: "text-[#9d8560]" },
+]
 
 const loanData: LoanData[] = [
   { name: "Lun", prestamos: 45, devoluciones: 38 },
@@ -103,15 +91,15 @@ const loanData: LoanData[] = [
   { name: "Vie", prestamos: 55, devoluciones: 48 },
   { name: "Sáb", prestamos: 67, devoluciones: 58 },
   { name: "Dom", prestamos: 43, devoluciones: 39 },
-];
+]
 
 const categoryData: CategoryData[] = [
-  { name: "Ficción", value: 35, color: "#10b981" },
-  { name: "Ciencia", value: 25, color: "#3b82f6" },
-  { name: "Historia", value: 20, color: "#8b5cf6" },
-  { name: "Arte", value: 12, color: "#f59e0b" },
-  { name: "Otros", value: 8, color: "#ef4444" },
-];
+  { name: "Ficción", value: 35, color: "#4a9d9d" },
+  { name: "Ciencia", value: 25, color: "#6bb5b5" },
+  { name: "Historia", value: 20, color: "#9d8560" },
+  { name: "Arte", value: 12, color: "#b89d7d" },
+  { name: "Otros", value: 8, color: "#7dc4c4" },
+]
 
 const weeklyActivity: WeeklyActivity[] = [
   { day: "L", visitas: 120 },
@@ -121,31 +109,28 @@ const weeklyActivity: WeeklyActivity[] = [
   { day: "V", visitas: 155 },
   { day: "S", visitas: 189 },
   { day: "D", visitas: 98 },
-];
+]
 
 const popularBooks: PopularBook[] = [
   { title: "El Quijote", author: "Cervantes", loans: 45 },
   { title: "Cien Años de Soledad", author: "García Márquez", loans: 38 },
   { title: "1984", author: "George Orwell", loans: 35 },
   { title: "El Principito", author: "Saint-Exupéry", loans: 32 },
-];
+]
 
 const Dashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50">
-    
-
       <main className="container mx-auto px-6 py-8 space-y-8">
         {/* Título y descripción */}
         <div className="space-y-2">
-      
           <p className="text-slate-600">Monitorea el rendimiento y las métricas clave de tu librería</p>
         </div>
 
         {/* Tarjetas de estadísticas */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {statsData.map((stat, index) => {
-            const Icon = stat.icon;
+            const Icon = stat.icon
             return (
               <Card key={index} className="hover:shadow-md transition-shadow">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -154,10 +139,10 @@ const Dashboard: React.FC = () => {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-slate-900">{stat.value}</div>
-                  <p className="text-xs text-emerald-600 font-medium">{stat.change} desde el mes pasado</p>
+                  <p className="text-xs text-[#4a9d9d] font-medium">{stat.change} desde el mes pasado</p>
                 </CardContent>
               </Card>
-            );
+            )
           })}
         </div>
 
@@ -183,8 +168,8 @@ const Dashboard: React.FC = () => {
                         borderRadius: "8px",
                       }}
                     />
-                    <Bar dataKey="prestamos" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="devoluciones" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="prestamos" fill="#4a9d9d" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="devoluciones" fill="#9d8560" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -257,9 +242,9 @@ const Dashboard: React.FC = () => {
                   <Line
                     type="monotone"
                     dataKey="visitas"
-                    stroke="#8b5cf6"
+                    stroke="#9d8560"
                     strokeWidth={3}
-                    dot={{ fill: "#8b5cf6", strokeWidth: 2, r: 4 }}
+                    dot={{ fill: "#9d8560", strokeWidth: 2, r: 4 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -280,9 +265,7 @@ const Dashboard: React.FC = () => {
                       <h4 className="font-semibold text-slate-900 text-sm">{book.title}</h4>
                       <p className="text-xs text-slate-700">{book.author}</p>
                     </div>
-                    <Badge className="bg-emerald-100 text-emerald-800">
-                      {book.loans} préstamos
-                    </Badge>
+                    <Badge className="bg-[#4a9d9d]/15 text-[#4a9d9d]">{book.loans} préstamos</Badge>
                   </div>
                 ))}
               </div>
@@ -291,7 +274,7 @@ const Dashboard: React.FC = () => {
         </div>
       </main>
     </div>
-  );
-};
+  )
+}
 
-export default Dashboard;
+export default Dashboard

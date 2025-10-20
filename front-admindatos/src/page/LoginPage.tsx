@@ -1,55 +1,56 @@
-import { useState } from "react";
-import { User, Lock, Eye, EyeOff, Loader, AlertCircle } from "lucide-react";
+import type React from "react"
+import { useState } from "react"
+import { User, Lock, Eye, EyeOff, Loader, AlertCircle } from "lucide-react"
 
 interface LoginPageProps {
-  onLogin: (username: string, password: string) => void;
+  onLogin: (username: string, password: string) => void
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showError, setShowError] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [showError, setShowError] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
     if (!username || !password) {
-      setError("Por favor, ingrese usuario y contraseña");
-      setShowError(true);
-      return;
+      setError("Por favor, ingrese usuario y contraseña")
+      setShowError(true)
+      return
     }
 
-    setError(null);
-    setShowError(false);
-    setIsLoading(true);
+    setError(null)
+    setShowError(false)
+    setIsLoading(true)
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       if (username !== "admin" || password !== "1234") {
-        setError("Usuario o contraseña incorrectos");
-        setShowError(true);
-        setIsLoading(false);
-        return;
+        setError("Usuario o contraseña incorrectos")
+        setShowError(true)
+        setIsLoading(false)
+        return
       }
 
       // Si las credenciales son correctas, llamar a onLogin
-      onLogin(username, password);
-      setIsLoading(false);
+      onLogin(username, password)
+      setIsLoading(false)
     } catch (err: any) {
-      console.error("Error durante el login:", err);
-      setError("Error inesperado. Intenta más tarde.");
-      setShowError(true);
-      setIsLoading(false);
+      console.error("Error durante el login:", err)
+      setError("Error inesperado. Intenta más tarde.")
+      setShowError(true)
+      setIsLoading(false)
     }
-  };
+  }
 
   const handleSocialLogin = (provider: string) => {
-    console.log(`Social login with: ${provider}`);
-  };
+    console.log(`Social login with: ${provider}`)
+  }
 
   return (
     <div
@@ -62,54 +63,38 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     bg-center 
     bg-no-repeat
   "
-  
     >
-
       <div className="absolute inset-0 bg-black/40" />
-
 
       {/* Lado izquierdo - Formulario de login */}
       <div
-      
         className="bg-black/10 w-full lg:w-[35%] xl:w-[30%] min-h-screen flex items-center justify-center p-4 sm:p-6 lg:p-8 relative"
         style={{
           background: "rgba(255, 255, 255, 0.1)",
           backdropFilter: "blur(10px)",
         }}
       >
-
-
         <div className="w-full max-w-xs sm:max-w-sm">
           <div className="w-full relative z-10 rounded-2xll">
             <div className="text-center space-y-1 mb-6">
-              <h1 className="text-2xl font-bold text-black font-sans">
-                Bienvenido
-              </h1>
-              <p className="text-black/80 font-sans text-sm">
-                Inicia sesión en tu cuenta para continuar
-              </p>
+              <h1 className="text-2xl font-bold text-black font-sans">Bienvenido</h1>
+              <p className="text-black/80 font-sans text-sm">Inicia sesión en tu cuenta para continuar</p>
             </div>
 
             <div className="space-y-4">
               <div className="space-y-1">
-                <label
-                  htmlFor="username"
-                  className="text-xs font-medium text-black font-sans"
-                >
+                <label htmlFor="username" className="text-xs font-medium text-black font-sans">
                   Usuario
                 </label>
                 <div className="relative">
-                  <User
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black/80"
-                    size={16}
-                  />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black/80" size={16} />
                   <input
                     id="username"
                     type="text"
                     placeholder="admin"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2.5 text-sm rounded-lg border text-black placeholder:text-black/50 bg-white/10 backdrop-blur-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:bg-white/15 transition-all duration-200 font-sans"
+                    className="w-full pl-10 pr-3 py-2.5 text-sm rounded-lg border text-black placeholder:text-black/50 bg-white/10 backdrop-blur-sm focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] focus:bg-white/15 transition-all duration-200 font-sans"
                     style={{
                       borderColor: "rgba(255, 255, 255, 0.6)",
                     }}
@@ -118,24 +103,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               </div>
 
               <div className="space-y-1">
-                <label
-                  htmlFor="password"
-                  className="text-xs font-medium text-black font-sans"
-                >
+                <label htmlFor="password" className="text-xs font-medium text-black font-sans">
                   Contraseña
                 </label>
                 <div className="relative">
-                  <Lock
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black/50"
-                    size={16}
-                  />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black/50" size={16} />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     placeholder="1234"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 text-sm rounded-lg border text-black  bg-white/10 backdrop-blur-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 focus:bg-white/15 transition-all duration-200 font-sans"
+                    className="w-full pl-10 pr-10 py-2.5 text-sm rounded-lg border text-black bg-white/10 backdrop-blur-sm focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] focus:bg-white/15 transition-all duration-200 font-sans"
                     style={{
                       borderColor: "rgba(255, 255, 255, 0.6)",
                     }}
@@ -154,20 +133,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 onClick={handleSubmit}
                 className="w-full py-3 rounded-lg font-sans font-semibold text-white text-sm transition-all duration-300 transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed mt-4 flex items-center justify-center"
                 style={{
-                  backgroundColor: "#7f1d1d", // rojo vino oscuro
-                  boxShadow: "0 6px 18px rgba(127, 29, 29, 0.4)",
+                  backgroundColor: "#4a9d9d",
+                  boxShadow: "0 6px 18px rgba(74, 157, 157, 0.4)",
                 }}
                 onMouseEnter={(e) => {
                   if (!isLoading) {
-                    e.currentTarget.style.backgroundColor = "#991b1b"; // un poco más brillante al hover
-                    e.currentTarget.style.boxShadow =
-                      "0 8px 22px rgba(153, 27, 27, 0.6)";
+                    e.currentTarget.style.backgroundColor = "#5aadad"
+                    e.currentTarget.style.boxShadow = "0 8px 22px rgba(90, 173, 173, 0.6)"
                   }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "#7f1d1d";
-                  e.currentTarget.style.boxShadow =
-                    "0 6px 18px rgba(127, 29, 29, 0.4)";
+                  e.currentTarget.style.backgroundColor = "#4a9d9d"
+                  e.currentTarget.style.boxShadow = "0 6px 18px rgba(74, 157, 157, 0.4)"
                 }}
                 disabled={isLoading}
               >
@@ -191,9 +168,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
             <div className="relative my-4">
               <div className="relative flex justify-center text-xs">
-                <span className="px-2 text-black/60 font-sans">
-                  O continúa con
-                </span>
+                <span className="px-2 text-black/60 font-sans">O continúa con</span>
               </div>
             </div>
 
@@ -235,11 +210,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   borderColor: "rgba(255, 255, 255, 0.6)",
                 }}
               >
-                <svg
-                  className="w-4 h-4"
-                  viewBox="0 0 384 512"
-                  fill="currentColor"
-                >
+                <svg className="w-4 h-4" viewBox="0 0 384 512" fill="currentColor">
                   <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z" />
                 </svg>
                 <span>Continuar con Apple</span>
@@ -287,7 +258,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default LoginPage;
+export default LoginPage

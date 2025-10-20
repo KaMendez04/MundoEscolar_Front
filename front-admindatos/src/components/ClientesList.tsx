@@ -1,18 +1,19 @@
-import { useState } from 'react';
-import { Search, Users, Edit2, X, AlertCircle } from 'lucide-react';
-import { useClientes } from '../hooks/useClientes';
-import type { Cliente } from '../types/cliente';
+import type React from "react"
+import { useState } from "react"
+import { Search, Users, Edit2, X, AlertCircle } from "lucide-react"
+import { useClientes } from "../hooks/useClientes"
+import type { Cliente } from "../types/cliente"
 
 // Modal de Confirmación (reutilizado del estilo del producto)
-const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = 'danger' }: any) => {
-  if (!isOpen) return null;
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "danger" }: any) => {
+  if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-xs bg-opacity-40 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
         <div className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            {type === 'danger' ? (
+            {type === "danger" ? (
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
                 <AlertCircle className="text-red-600" size={24} />
               </div>
@@ -33,13 +34,11 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = 'dang
             </button>
             <button
               onClick={() => {
-                onConfirm();
-                onClose();
+                onConfirm()
+                onClose()
               }}
               className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-white transition ${
-                type === 'danger'
-                  ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-blue-600 hover:bg-blue-700'
+                type === "danger" ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
               }`}
             >
               Confirmar
@@ -48,66 +47,67 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = 'dang
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
 const ClientesModule = () => {
-  const { clientes, loading, error, updateCliente } = useClientes();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showModalEdit, setShowModalEdit] = useState(false);
-  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
-  const [formData, setFormData] = useState<Partial<Cliente>>({});
-  const [formError, setFormError] = useState('');
+  const { clientes, loading, error, updateCliente } = useClientes()
+  const [searchTerm, setSearchTerm] = useState("")
+  const [showModalEdit, setShowModalEdit] = useState(false)
+  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null)
+  const [formData, setFormData] = useState<Partial<Cliente>>({})
+  const [formError, setFormError] = useState("")
 
   // Filtro de búsqueda
-  const filteredClientes = clientes.filter(c =>
-    c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.apellido1.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.apellido2.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.cedula.toString().includes(searchTerm)
-  );
+  const filteredClientes = clientes.filter(
+    (c) =>
+      c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.apellido1.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.apellido2.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.cedula.toString().includes(searchTerm),
+  )
 
   // Handlers para modal de edición
   const handleOpenEditModal = (cliente: Cliente) => {
-    setEditingCliente(cliente);
-    setFormData(cliente);
-    setShowModalEdit(true);
-    setFormError('');
-  };
+    setEditingCliente(cliente)
+    setFormData(cliente)
+    setShowModalEdit(true)
+    setFormError("")
+  }
 
   const handleCloseEditModal = () => {
-    setShowModalEdit(false);
-    setEditingCliente(null);
-    setFormError('');
-  };
+    setShowModalEdit(false)
+    setEditingCliente(null)
+    setFormError("")
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const target = e.target;
-    const name = target.name;
-    let value: string | number | boolean = target.value;
+    const target = e.target
+    const name = target.name
+    let value: string | number | boolean = target.value
 
-    if (target.type === 'checkbox') {
-      value = (target as HTMLInputElement).checked;
-    } else if (target.type === 'number') {
-      value = parseInt(value as string) || 0;
+    if (target.type === "checkbox") {
+      value = (target as HTMLInputElement).checked
+    } else if (target.type === "number") {
+      value = Number.parseInt(value as string) || 0
     }
 
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
+    e.preventDefault()
+    setFormError("")
 
-    if (!editingCliente || !formData) return;
+    if (!editingCliente || !formData) return
 
     try {
-      await updateCliente(formData as Cliente);
-      handleCloseEditModal();
+      await updateCliente(formData as Cliente)
+      handleCloseEditModal()
     } catch (err: any) {
-      setFormError(err.message || 'Error al actualizar el cliente');
+      setFormError(err.message || "Error al actualizar el cliente")
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -135,7 +135,7 @@ const ClientesModule = () => {
                 placeholder="Buscar por nombre, apellido o cédula..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
               />
             </div>
 
@@ -158,22 +158,35 @@ const ClientesModule = () => {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr>
-                  
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nombre</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Apellido 1</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Apellido 2</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cédula</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tipo</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contacto</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Correo</th>
-                     {/*  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cond. Pago</th> */}
-                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Acciones</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Nombre
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Apellido 1
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Apellido 2
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Cédula
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Tipo
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Contacto
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Correo
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Acciones
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredClientes.map((cliente) => (
                       <tr key={cliente.idCliente} className="hover:bg-gray-50 transition">
-                      {/*   <td className="px-4 py-3 text-sm text-gray-700">{cliente.idCliente}</td> */}
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">{cliente.nombre}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{cliente.apellido1}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{cliente.apellido2}</td>
@@ -181,11 +194,10 @@ const ClientesModule = () => {
                         <td className="px-4 py-3 text-sm text-gray-600">{cliente.tipoCliente}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{cliente.contacto}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{cliente.correoElectronico}</td>
-                       {/*  <td className="px-4 py-3 text-sm text-gray-600">{cliente.condicionesPago ? 'Sí' : 'No'}</td> */}
                         <td className="px-4 py-3 text-sm">
                           <button
                             onClick={() => handleOpenEditModal(cliente)}
-                            className="text-blue-600 hover:text-blue-800 p-1.5 hover:bg-blue-50 rounded-lg transition"
+                            className="text-[#4a9d9d] hover:text-[#5aadad] p-1.5 hover:bg-[#4a9d9d]/10 rounded-lg transition"
                             title="Editar"
                           >
                             <Edit2 size={16} />
@@ -232,9 +244,9 @@ const ClientesModule = () => {
                   <input
                     type="text"
                     name="nombre"
-                    value={formData.nombre || ''}
+                    value={formData.nombre || ""}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                   />
                 </div>
@@ -244,9 +256,9 @@ const ClientesModule = () => {
                   <input
                     type="text"
                     name="apellido1"
-                    value={formData.apellido1 || ''}
+                    value={formData.apellido1 || ""}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                   />
                 </div>
@@ -256,9 +268,9 @@ const ClientesModule = () => {
                   <input
                     type="text"
                     name="apellido2"
-                    value={formData.apellido2 || ''}
+                    value={formData.apellido2 || ""}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                   />
                 </div>
@@ -268,9 +280,9 @@ const ClientesModule = () => {
                   <input
                     type="text"
                     name="tipoCliente"
-                    value={formData.tipoCliente || ''}
+                    value={formData.tipoCliente || ""}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                   />
                 </div>
@@ -280,9 +292,9 @@ const ClientesModule = () => {
                   <input
                     type="number"
                     name="cedula"
-                    value={formData.cedula || ''}
+                    value={formData.cedula || ""}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                   />
                 </div>
@@ -292,9 +304,9 @@ const ClientesModule = () => {
                   <input
                     type="text"
                     name="contacto"
-                    value={formData.contacto || ''}
+                    value={formData.contacto || ""}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                   />
                 </div>
@@ -304,23 +316,12 @@ const ClientesModule = () => {
                   <input
                     type="email"
                     name="correoElectronico"
-                    value={formData.correoElectronico || ''}
+                    value={formData.correoElectronico || ""}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                   />
                 </div>
-
-             {/*    <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="condicionesPago"
-                    checked={formData.condicionesPago || false}
-                    onChange={handleInputChange}
-                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                  />
-                  <label className="ml-2 text-sm font-medium text-gray-700">Condiciones de Pago</label>
-                </div> */}
 
                 <div className="flex gap-3 pt-4">
                   <button
@@ -332,7 +333,7 @@ const ClientesModule = () => {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm"
+                    className="flex-1 px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition shadow-sm"
                   >
                     Actualizar
                   </button>
@@ -343,7 +344,7 @@ const ClientesModule = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default ClientesModule;
+export default ClientesModule
