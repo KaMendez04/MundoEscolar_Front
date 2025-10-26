@@ -5,7 +5,7 @@ import { useClientes } from "../hooks/useClientes"
 import type { Cliente } from "../types/cliente"
 
 // Modal de Confirmación (reutilizado del estilo del producto)
-const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "danger" }: any) => {
+const  ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "danger" }: any) => {
   if (!isOpen) return null
 
   return (
