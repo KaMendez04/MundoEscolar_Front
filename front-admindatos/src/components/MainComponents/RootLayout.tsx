@@ -3,8 +3,10 @@ import { useState, useEffect } from "react";
 import LoginPage from "../../page/LoginPage";
 import NavBar from "./NavBar";
 import LoadingScreen from "../../components/MainComponents/LoadingScreen"; // Ajusta la ruta según tu estructura
+import { useAuth } from "../../hooks/useAuth";
 
 const RootLayout = () => {
+  const { login } = useAuth()
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoadingScreen, setShowLoadingScreen] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
@@ -19,8 +21,9 @@ const RootLayout = () => {
   }, []);
 
   // Manejo de login
-  const handleLogin = (username: string, password: string) => {
-    if (username === "admin" && password === "1234") {
+  const handleLogin = async (userEmail: string, password: string) => {
+    const token = await login({ userEmail, password });
+    if (token) {
       setIsLoggedIn(true);
       localStorage.setItem("loggedIn", "true");
       

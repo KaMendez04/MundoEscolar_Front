@@ -1,14 +1,16 @@
 import type React from "react"
 import { useState } from "react"
 import { User, Lock, Eye, EyeOff, Loader, AlertCircle } from "lucide-react"
+import { useAuth } from "../hooks/useAuth"
 
 interface LoginPageProps {
-  onLogin: (username: string, password: string) => void
+  onLogin: (userEmail: string, password: string) => void
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
-  const [username, setUsername] = useState("")
+  const [userEmail, setuserEmail] = useState("")
   const [password, setPassword] = useState("")
+  const { login, errorlogin, loading  } = useAuth();
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showError, setShowError] = useState(false)
@@ -17,7 +19,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!username || !password) {
+    if (!userEmail || !password) {
       setError("Por favor, ingrese usuario y contraseña")
       setShowError(true)
       return
@@ -30,7 +32,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      if (username !== "admin" || password !== "1234") {
+      await login({ userEmail, password });
+
+      if (errorlogin) {
+        console.error("Error durante el login:", errorlogin)
         setError("Usuario o contraseña incorrectos")
         setShowError(true)
         setIsLoading(false)
@@ -38,7 +43,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
       }
 
       // Si las credenciales son correctas, llamar a onLogin
-      onLogin(username, password)
+      onLogin(userEmail, password)
       setIsLoading(false)
     } catch (err: any) {
       console.error("Error durante el login:", err)
@@ -83,17 +88,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
             <div className="space-y-4">
               <div className="space-y-1">
-                <label htmlFor="username" className="text-xs font-medium text-black font-sans">
+                <label htmlFor="userEmail" className="text-xs font-medium text-black font-sans">
                   Usuario
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black/80" size={16} />
                   <input
-                    id="username"
+                    id="userEmail"
                     type="text"
                     placeholder="admin"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    value={userEmail}
+                    onChange={(e) => setuserEmail(e.target.value)}
                     className="w-full pl-10 pr-3 py-2.5 text-sm rounded-lg border text-black placeholder:text-black/50 bg-white/10 backdrop-blur-sm focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] focus:bg-white/15 transition-all duration-200 font-sans"
                     style={{
                       borderColor: "rgba(255, 255, 255, 0.6)",
