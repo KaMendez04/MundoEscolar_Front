@@ -842,13 +842,19 @@ const ProveedoresOrdenesModule = () => {
                             Cantidad
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Costo Unitario
+                            Monto Unit.
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Impuesto
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Descuento
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             Subtotal
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Stock Disponible
+                            Stock
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             Acciones
@@ -865,9 +871,11 @@ const ProveedoresOrdenesModule = () => {
                                 {detalle.cantidad}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-700 font-medium">₡{detalle.costo.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700 font-medium">₡{detalle.monto.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">₡{detalle.impuesto.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">₡{detalle.descuento.toFixed(2)}</td>
                             <td className="px-4 py-3 text-sm text-gray-900 font-semibold">
-                              ₡{(detalle.cantidad * detalle.costo).toFixed(2)}
+                              ₡{detalle.subtotal.toFixed(2)}
                             </td>
                             <td className="px-4 py-3 text-sm">
                               <span
