@@ -1120,7 +1120,7 @@ const ProveedoresOrdenesModule = () => {
                     <option value={0}>Seleccione un producto</option>
                     {productos.map((producto) => (
                       <option key={producto.idProducto} value={producto.idProducto}>
-                        {producto.nombre} - Stock: {producto.stock} - ₡{producto.costo.toFixed(2)}
+                        {producto.nombre} - Stock: {producto.stock} - ₡{producto.monto.toFixed(2)}
                       </option>
                     ))}
                   </select>
@@ -1152,11 +1152,11 @@ const ProveedoresOrdenesModule = () => {
                               <span className="font-medium">Stock disponible:</span> {producto.stock}
                             </p>
                             <p>
-                              <span className="font-medium">Costo unitario:</span> ₡{producto.costo.toFixed(2)}
+                              <span className="font-medium">Costo unitario:</span> ₡{producto.monto.toFixed(2)}
                             </p>
                             <p>
                               <span className="font-medium">Subtotal:</span> ₡
-                              {(producto.costo * formDataDetalle.cantidad).toFixed(2)}
+                              {(producto.monto * formDataDetalle.cantidad).toFixed(2)}
                             </p>
                           </div>
                         )
