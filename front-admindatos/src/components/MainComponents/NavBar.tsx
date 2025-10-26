@@ -1,7 +1,6 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { useState } from "react";
 import { 
-  Search, 
   BarChart3, 
   PackagePlus,
   FileText, 
@@ -82,7 +81,7 @@ const NavBar: React.FC<NavBarProps> = ({ onLogout, children }) => {
             className={`w-6 h-6 border rounded-full flex items-center justify-center hover:bg-gray-50 shadow-lg transition-all duration-300 ${
               isPinned 
                 ? 'bg-blue-40 border-blue-100' 
-                : 'bg-white border-gray-200'
+                : 'bg-blue-100 border-blue-200'
             }`}
           >
             {isPinned ? (
