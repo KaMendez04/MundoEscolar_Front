@@ -363,7 +363,9 @@ const VentasModule = () => {
                     >
                       <div className="flex items-start justify-between mb-2">
                         <h3 className="font-medium text-gray-900">{item.nombre}</h3>
-                        <span className="text-[#4a9d9d] font-semibold">₡{item.costo.toFixed(2)}</span>
+                        <span className="text-[#4a9d9d] font-semibold">
+                          ₡{(item.costo ?? item.precio ?? 0).toFixed(2)}
+                        </span>
                       </div>
                       <p className="text-sm text-gray-600 mb-3">{item.descripcion}</p>
                       <div className="flex items-center justify-between">
