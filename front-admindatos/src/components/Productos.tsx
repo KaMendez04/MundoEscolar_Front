@@ -71,7 +71,9 @@ const InventarioModule = () => {
     nombre: "",
     descripcion: "",
     stock: 0,
-    costo: 0,
+    monto: 0,
+    impuesto: 13,
+    descuento: 0,
     idCategoria: 1,
   })
   const [formErrorProducto, setFormErrorProducto] = useState("")
@@ -131,7 +133,9 @@ const InventarioModule = () => {
         nombre: producto.nombre,
         descripcion: producto.descripcion,
         stock: producto.stock,
-        costo: producto.costo,
+        monto: producto.monto,
+        impuesto: producto.impuesto,
+        descuento: producto.descuento,
         idCategoria: producto.idCategoria,
       })
     } else {
@@ -140,7 +144,9 @@ const InventarioModule = () => {
         nombre: "",
         descripcion: "",
         stock: 0,
-        costo: 0,
+        monto: 0,
+        impuesto: 13,
+        descuento: 0,
         idCategoria: categorias.length > 0 ? categorias[0].idCategoria : 1,
       })
     }
@@ -241,6 +247,7 @@ const InventarioModule = () => {
     })
   }
 
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className=" mx-auto">
@@ -340,7 +347,13 @@ const InventarioModule = () => {
                             Stock
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Costo
+                            Precio Base
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Impuesto
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Descuento
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             Categoría
@@ -369,7 +382,17 @@ const InventarioModule = () => {
                               </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-700 font-medium">
-                              ₡{producto.costo.toFixed(2)}
+                              ₡{(producto.monto ?? 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              <span className="inline-flex px-2 py-1 text-xs font-medium">
+                                {producto.impuesto}%
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-600">
+                              <span className="inline-flex px-2 py-1 text-xs font-medium">
+                                {producto.descuento}%
+                              </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-600">
                               <span className="inline-flex px-2 py-1 bg-[#4a9d9d]/10 text-[#4a9d9d] rounded-md text-xs font-medium">
@@ -506,9 +529,9 @@ const InventarioModule = () => {
         </div>
       </div>
 
-      {/* Modal Producto */}
+     {/* Modal Producto */}
       {showModalProducto && (
-        <div className="fixed inset-0  bg-black/30 backdrop-blur-xs bg-opacity-40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-xs bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-800">
@@ -550,33 +573,69 @@ const InventarioModule = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Stock *</label>
-                  <input
-                    type="number"
-                    value={formDataProducto.stock}
-                    onChange={(e) =>
-                      setFormDataProducto({ ...formDataProducto, stock: Number.parseInt(e.target.value) || 0 })
-                    }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                    min="0"
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Stock *</label>
+                    <input
+                      type="number"
+                      value={formDataProducto.stock}
+                      onChange={(e) =>
+                        setFormDataProducto({ ...formDataProducto, stock: Number.parseInt(e.target.value) || 0 })
+                      }
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                      min="0"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Precio Base (₡) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formDataProducto.monto}
+                      onChange={(e) =>
+                        setFormDataProducto({ ...formDataProducto, monto: Number.parseFloat(e.target.value) || 0 })
+                      }
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                      min="0"
+                      required
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Costo (₡) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formDataProducto.costo}
-                    onChange={(e) =>
-                      setFormDataProducto({ ...formDataProducto, costo: Number.parseFloat(e.target.value) || 0 })
-                    }
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                    min="0"
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Impuesto (%) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formDataProducto.impuesto}
+                      onChange={(e) =>
+                        setFormDataProducto({ ...formDataProducto, impuesto: Number.parseFloat(e.target.value) || 0 })
+                      }
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                      min="0"
+                      max="100"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Descuento (%) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={formDataProducto.descuento}
+                      onChange={(e) =>
+                        setFormDataProducto({ ...formDataProducto, descuento: Number.parseFloat(e.target.value) || 0 })
+                      }
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                      min="0"
+                      max="100"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -595,6 +654,25 @@ const InventarioModule = () => {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* Vista previa del precio final */}
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <div className="text-sm text-gray-600 mb-2">Vista previa del precio:</div>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Precio base:</span>
+                      <span className="font-medium">₡{(formDataProducto.monto || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">+ Impuesto ({formDataProducto.impuesto}%):</span>
+                      <span className="font-medium">₡{((formDataProducto.monto || 0) * (formDataProducto.impuesto / 100)).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">- Descuento ({formDataProducto.descuento}%):</span>
+                      <span className="font-medium text-orange-600">-₡{(((formDataProducto.monto || 0) * (1 + formDataProducto.impuesto / 100)) * (formDataProducto.descuento / 100)).toFixed(2)}</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-4">

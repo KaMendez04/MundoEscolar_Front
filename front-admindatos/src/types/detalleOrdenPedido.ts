@@ -4,8 +4,11 @@ export interface DetalleOrdenPedido {
   cantidad: number;
   idProducto: number;
   nombreProducto: string;
-  costo: number;
+  monto: number;
+  impuesto: number;
+  descuento: number;
   stock: number;
+  subtotal: number;
 }
 
 export interface CreateDetalleOrdenPedidoDto {

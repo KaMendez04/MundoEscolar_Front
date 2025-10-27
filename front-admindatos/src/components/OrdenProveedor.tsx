@@ -25,6 +25,20 @@ import type { Proveedor, CreateProveedorDto } from "../types/proveedor"
 import type { CreateOrdenPedidoDto } from "../types/ordenPedido"
 import type { CreateDetalleOrdenPedidoDto } from "../types/detalleOrdenPedido"
 
+// Función para formatear cédula jurídica
+const formatCedulaJuridica = (cedula: string): string => {
+  // Eliminar cualquier caracter que no sea número
+  const numbersOnly = cedula.replace(/\D/g, "")
+  
+  // Aplicar formato #-###-######
+  if (numbersOnly.length === 10) {
+    return `${numbersOnly.charAt(0)}-${numbersOnly.substring(1, 4)}-${numbersOnly.substring(4, 10)}`
+  }
+  
+  // Si no tiene 10 dígitos, devolver tal cual
+  return cedula
+}
+
 // Modal de Confirmación
 const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "danger" }: any) => {
   if (!isOpen) return null
@@ -526,7 +540,7 @@ const ProveedoresOrdenesModule = () => {
                           {proveedores.map((proveedor) => (
                             <tr key={proveedor.idProveedor} className="hover:bg-gray-50 transition">
                               <td className="px-4 py-3 text-sm text-gray-700 font-medium">
-                                {proveedor.cedulaJuridica}
+                                {formatCedulaJuridica(proveedor.cedulaJuridica)}
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-900 font-medium">{proveedor.nombre}</td>
                               <td className="px-4 py-3 text-sm text-gray-600">{proveedor.telefono}</td>
@@ -715,7 +729,7 @@ const ProveedoresOrdenesModule = () => {
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-sm text-gray-900 font-medium">{orden.nombreProveedor}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{orden.cedulaJuridica}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{formatCedulaJuridica(orden.cedulaJuridica)}</td>
                               <td className="px-4 py-3 text-sm">
                                 <span
                                   className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
@@ -842,13 +856,19 @@ const ProveedoresOrdenesModule = () => {
                             Cantidad
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Costo Unitario
+                            Monto Unit.
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Impuesto
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Descuento
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             Subtotal
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Stock Disponible
+                            Stock
                           </th>
                           <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                             Acciones
@@ -865,9 +885,11 @@ const ProveedoresOrdenesModule = () => {
                                 {detalle.cantidad}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-700 font-medium">₡{detalle.costo.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-700 font-medium">₡{detalle.monto.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">₡{detalle.impuesto.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-sm text-gray-600">₡{detalle.descuento.toFixed(2)}</td>
                             <td className="px-4 py-3 text-sm text-gray-900 font-semibold">
-                              ₡{(detalle.cantidad * detalle.costo).toFixed(2)}
+                              ₡{detalle.subtotal.toFixed(2)}
                             </td>
                             <td className="px-4 py-3 text-sm">
                               <span
@@ -1045,7 +1067,7 @@ const ProveedoresOrdenesModule = () => {
                       .filter((p) => p.estado)
                       .map((proveedor) => (
                         <option key={proveedor.idProveedor} value={proveedor.cedulaJuridica}>
-                          {proveedor.nombre} - {proveedor.cedulaJuridica}
+                          {proveedor.nombre} - {formatCedulaJuridica(proveedor.cedulaJuridica)}
                         </option>
                       ))}
                   </select>
@@ -1120,7 +1142,7 @@ const ProveedoresOrdenesModule = () => {
                     <option value={0}>Seleccione un producto</option>
                     {productos.map((producto) => (
                       <option key={producto.idProducto} value={producto.idProducto}>
-                        {producto.nombre} - Stock: {producto.stock} - ₡{producto.costo.toFixed(2)}
+                        {producto.nombre} - Stock: {producto.stock} - ₡{producto.monto.toFixed(2)}
                       </option>
                     ))}
                   </select>
@@ -1152,11 +1174,11 @@ const ProveedoresOrdenesModule = () => {
                               <span className="font-medium">Stock disponible:</span> {producto.stock}
                             </p>
                             <p>
-                              <span className="font-medium">Costo unitario:</span> ₡{producto.costo.toFixed(2)}
+                              <span className="font-medium">Costo unitario:</span> ₡{producto.monto.toFixed(2)}
                             </p>
                             <p>
                               <span className="font-medium">Subtotal:</span> ₡
-                              {(producto.costo * formDataDetalle.cantidad).toFixed(2)}
+                              {(producto.monto * formDataDetalle.cantidad).toFixed(2)}
                             </p>
                           </div>
                         )
