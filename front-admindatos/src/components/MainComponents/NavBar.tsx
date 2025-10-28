@@ -14,6 +14,7 @@ import {
   ChartSpline,
   ShoppingBasket,
   Users,
+  UserStar,
   FolderOpenDot,
 } from "lucide-react";
 
@@ -31,6 +32,7 @@ const routeTitles: Record<string, string> = {
   '/Orden': 'Orden de Proveedor',
   '/VentasServicio': 'Inventario Servicio',
   '/clientes': 'Clientes',
+  '/vendedores': 'Vendedores',
   '/facturas': 'Facturas',
 };
 
@@ -43,6 +45,7 @@ const navigationItems = [
   { to: '/Orden', icon: Truck, label: 'Orden de Proveedor' },
   { to: '/VentasServicio', icon: ShoppingBasket, label: 'Inventario Servicio' },
   { to: '/clientes', icon: Users, label: 'Clientes' },
+  { to: '/vendedores', icon: UserStar, label: 'Vendedores' },
   { to: '/facturas', icon: FolderOpenDot, label: 'Facturas' },
 ];
 
