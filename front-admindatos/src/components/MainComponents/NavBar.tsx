@@ -14,6 +14,7 @@ import {
   ChartSpline,
   ShoppingBasket,
   Users,
+  UserStar,
 } from "lucide-react";
 
 // ✅ Definimos las props esperadas simplificadas
@@ -31,6 +32,7 @@ const routeTitles: Record<string, string> = {
   '/Orden': 'Orden de Proveedor',
   '/VentasServicio': 'Inventario Servicio',
   '/clientes': 'Clientes',
+  '/vendedores': 'Vendedores',
 };
 
 // ✅ Configuración de navegación
@@ -42,7 +44,7 @@ const navigationItems = [
   { to: '/Orden', icon: Truck, label: 'Orden de Proveedor' },
   { to: '/VentasServicio', icon: ShoppingBasket, label: 'Inventario Servicio' },
   { to: '/clientes', icon: Users, label: 'Clientes' },
-
+  { to: '/vendedores', icon: UserStar, label: 'Vendedores' },
 ];
 
 const NavBar: React.FC<NavBarProps> = ({ onLogout, children }) => {
