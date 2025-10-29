@@ -1,6 +1,6 @@
 
 
- import { Facturas } from "../components/Facturas"; 
+ import  Facturas  from "../components/FacturasTable"; 
 
     export const FacturasPage = () => {
       return (
