@@ -1,7 +1,9 @@
-import { useState } from "react"
-import { ShoppingCart, Plus, Minus, Trash2, Package, Briefcase, Search, X, ShoppingBag } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ShoppingCart, Plus, Minus, Trash2, Package, Briefcase, Search, X, ShoppingBag, User, Receipt } from "lucide-react"
 import { useProductos } from "../hooks/useProdutos"
 import { useServicios } from "../hooks/useServicios"
+import { useFacturas } from "../hooks/useFacturas"
+import { useDetalleFactura } from "../hooks/useDetalleFactura"
 
 type ItemVenta = {
   id: string
@@ -18,11 +20,18 @@ type ItemVenta = {
 const VentasModule = () => {
   const { productos, loading: loadingProductos } = useProductos()
   const { servicios, loading: loadingServicios } = useServicios()
+  const { factura, createFactura, fetchFacturaById, updateFactura, loading: loadingFactura } = useFacturas()
+  const { addDetalleFactura, loading: loadingDetalle } = useDetalleFactura()
 
   const [carrito, setCarrito] = useState<ItemVenta[]>([])
   const [mostrarModal, setMostrarModal] = useState(false)
   const [tipoModal, setTipoModal] = useState<"producto" | "servicio">("producto")
   const [searchTerm, setSearchTerm] = useState("")
+  const [idFacturaActual, setIdFacturaActual] = useState<number | null>(null)
+  const [idVendedor, setIdVendedor] = useState<string>("")
+  const [idCliente, setIdCliente] = useState<string>("")
+  const [montoCancelado, setMontoCancelado] = useState<string>("")
+  const [mostrarResumenFinal, setMostrarResumenFinal] = useState(false)
 
   // Filtrar productos/servicios
   const itemsFiltrados =
@@ -38,24 +47,47 @@ const VentasModule = () => {
             s.descripcion.toLowerCase().includes(searchTerm.toLowerCase()),
         )
 
+  // Crear factura al agregar primer item
+  const inicializarFactura = async () => {
+    if (!idFacturaActual) {
+      const nuevaFactura = await createFactura()
+      if (nuevaFactura) {
+        setIdFacturaActual(nuevaFactura.idFactura)
+        console.log("Factura creada:", nuevaFactura)
+      }
+    }
+  }
+
   // Agregar item al carrito
-  const agregarAlCarrito = (item: any, tipo: "producto" | "servicio") => {
+  const agregarAlCarrito = async (item: any, tipo: "producto" | "servicio") => {
     const itemId = `${tipo}-${tipo === "producto" ? item.idProducto : item.idServicio}`
     const existente = carrito.find((i) => i.id === itemId)
 
     if (existente) {
-      // Si es producto, verificar stock
       if (tipo === "producto" && existente.cantidad >= item.stock) {
         alert("No hay suficiente stock disponible")
         return
       }
 
+      const nuevaCantidad = existente.cantidad + 1
       setCarrito(
         carrito.map((i) =>
-          i.id === itemId ? { ...i, cantidad: i.cantidad + 1, subtotal: (i.cantidad + 1) * i.precioUnitario } : i,
+          i.id === itemId ? { ...i, cantidad: nuevaCantidad, subtotal: nuevaCantidad * i.precioUnitario } : i,
         ),
       )
+
+      // Actualizar en backend si ya existe la factura
+      if (idFacturaActual) {
+        await addDetalleFactura({
+          idFactura: idFacturaActual,
+          cantidad: 1,
+          idProducto: tipo === "producto" ? item.idProducto : null,
+          idServicio: tipo === "servicio" ? item.idServicio : null,
+        })
+      }
     } else {
+      // Inicializar factura si no existe
+      await inicializarFactura()
 
       const nuevoItem: ItemVenta = {
         id: itemId,
@@ -63,12 +95,22 @@ const VentasModule = () => {
         idItem: tipo === "producto" ? item.idProducto : item.idServicio,
         nombre: item.nombre,
         descripcion: item.descripcion,
-        precioUnitario: item.costo ?? item.precio ?? 0,
+        precioUnitario: item.monto ?? item.precio ?? 0,
         cantidad: 1,
-        subtotal: (item.monto ?? item.precio ?? 0),    
+        subtotal: item.monto ?? item.precio ?? 0,
         stockDisponible: tipo === "producto" ? item.stock : undefined,
       }
       setCarrito([...carrito, nuevoItem])
+
+      // Agregar detalle a la factura en backend
+      if (idFacturaActual) {
+        await addDetalleFactura({
+          idFactura: idFacturaActual,
+          cantidad: 1,
+          idProducto: tipo === "producto" ? item.idProducto : null,
+          idServicio: tipo === "servicio" ? item.idServicio : null,
+        })
+      }
     }
 
     setMostrarModal(false)
@@ -76,32 +118,44 @@ const VentasModule = () => {
   }
 
   // Actualizar cantidad
-  const actualizarCantidad = (itemId: string, cambio: number) => {
+  const actualizarCantidad = async (itemId: string, cambio: number) => {
+    const item = carrito.find((i) => i.id === itemId)
+    if (!item) return
+
+    const nuevaCantidad = Math.max(1, item.cantidad + cambio)
+
+    if (item.tipo === "producto" && item.stockDisponible && nuevaCantidad > item.stockDisponible) {
+      alert("No hay suficiente stock disponible")
+      return
+    }
+
     setCarrito(
-      carrito.map((item) => {
-        if (item.id === itemId) {
-          const nuevaCantidad = Math.max(1, item.cantidad + cambio)
-
-          // Verificar stock si es producto
-          if (item.tipo === "producto" && item.stockDisponible && nuevaCantidad > item.stockDisponible) {
-            alert("No hay suficiente stock disponible")
-            return item
-          }
-
-          return {
-            ...item,
-            cantidad: nuevaCantidad,
-            subtotal: nuevaCantidad * item.precioUnitario,
-          }
-        }
-        return item
-      }),
+      carrito.map((i) =>
+        i.id === itemId
+          ? {
+              ...i,
+              cantidad: nuevaCantidad,
+              subtotal: nuevaCantidad * i.precioUnitario,
+            }
+          : i,
+      ),
     )
+
+    // Agregar diferencia al backend
+    if (idFacturaActual && cambio > 0) {
+      await addDetalleFactura({
+        idFactura: idFacturaActual,
+        cantidad: cambio,
+        idProducto: item.tipo === "producto" ? item.idItem : null,
+        idServicio: item.tipo === "servicio" ? item.idItem : null,
+      })
+    }
   }
 
   // Eliminar item del carrito
   const eliminarDelCarrito = (itemId: string) => {
     setCarrito(carrito.filter((item) => item.id !== itemId))
+    // Nota: Para eliminar del backend necesitarías implementar un endpoint de eliminación
   }
 
   // Calcular total
@@ -110,65 +164,243 @@ const VentasModule = () => {
   }
 
   // Procesar venta
-  const procesarVenta = () => {
+  const procesarVenta = async () => {
     if (carrito.length === 0) {
       alert("El carrito está vacío")
       return
     }
 
-    // Aquí implementarías la lógica para guardar la venta
-    console.log("Procesando venta:", {
-      items: carrito,
-      total: calcularTotal(),
-      fecha: new Date(),
+    if (!idVendedor) {
+      alert("Debe ingresar el ID del vendedor")
+      return
+    }
+
+    if (!idFacturaActual) {
+      alert("No se ha creado una factura")
+      return
+    }
+
+    // Actualizar factura con vendedor, cliente y monto cancelado
+    const success = await updateFactura({
+      idFactura: idFacturaActual,
+      idVendedor: parseInt(idVendedor),
+      idCliente: idCliente ? parseInt(idCliente) : null,
+      montoCancelado: montoCancelado ? parseFloat(montoCancelado) : 0,
+      estadoPago: true,
     })
 
-    alert(`Venta procesada exitosamente\nTotal: ₡${calcularTotal().toFixed(2)}`)
+    if (success) {
+      // Obtener factura completa con todos los detalles
+      await fetchFacturaById(idFacturaActual)
+      setMostrarResumenFinal(true)
+    } else {
+      alert("Error al procesar la venta")
+    }
+  }
+
+  // Resetear venta
+  const nuevaVenta = () => {
     setCarrito([])
+    setIdFacturaActual(null)
+    setIdVendedor("")
+    setIdCliente("")
+    setMontoCancelado("")
+    setMostrarResumenFinal(false)
   }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Panel de Acciones */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <ShoppingBag size={24} className="text-[#4a9d9d]" />
-                Agregar Items
-              </h2>
-
-              <div className="space-y-3">
+        {/* Modal Resumen Final */}
+        {mostrarResumenFinal && factura && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                  <Receipt size={28} className="text-[#4a9d9d]" />
+                  Factura #{factura.numeroFactura}
+                </h2>
                 <button
-                  onClick={() => {
-                    setTipoModal("producto")
-                    setMostrarModal(true)
-                    setSearchTerm("")
-                  }}
-                  className="w-full flex items-center justify-center gap-2 bg-[#4a9d9d] text-white px-4 py-3 rounded-lg hover:bg-[#5aadad] transition font-medium shadow-sm"
+                  onClick={nuevaVenta}
+                  className="bg-[#4a9d9d] text-white px-4 py-2 rounded-lg hover:bg-[#5aadad] transition"
                 >
-                  <Package size={20} />
-                  Agregar Producto
-                </button>
-
-                <button
-                  onClick={() => {
-                    setTipoModal("servicio")
-                    setMostrarModal(true)
-                    setSearchTerm("")
-                  }}
-                  className="w-full flex items-center justify-center gap-2 bg-[#9d8560] text-white px-4 py-3 rounded-lg hover:bg-[#b89d7d] transition font-medium shadow-sm"
-                >
-                  <Briefcase size={20} />
-                  Agregar Servicio
+                  Nueva Venta
                 </button>
               </div>
 
+              <div className="p-6 space-y-6">
+                {/* Info General */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Fecha:</span>
+                      <p className="font-medium">{new Date(factura.fechaEmision).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Estado:</span>
+                      <p className="font-medium">{factura.estadoPago ? "✅ Pagado" : "⏳ Pendiente"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Cliente y Vendedor */}
+                {(factura.cliente || factura.vendedor) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {factura.cliente && (
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <h3 className="font-semibold text-gray-800 mb-2">Cliente</h3>
+                        <p className="text-sm">
+                          {factura.cliente.nombre} {factura.cliente.apellido1}
+                        </p>
+                        <p className="text-xs text-gray-600">Cédula: {factura.cliente.cedula}</p>
+                      </div>
+                    )}
+                    {factura.vendedor && (
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <h3 className="font-semibold text-gray-800 mb-2">Vendedor</h3>
+                        <p className="text-sm">
+                          {factura.vendedor.nombre} {factura.vendedor.apellido1}
+                        </p>
+                        <p className="text-xs text-gray-600">Cédula: {factura.vendedor.cedula}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Detalles */}
+                <div>
+                  <h3 className="font-semibold text-gray-800 mb-3">Detalles de la Venta</h3>
+                  <div className="space-y-2">
+                    {factura.detalles.map((detalle, index) => (
+                      <div key={index} className="flex justify-between items-center border-b border-gray-200 pb-2">
+                        <div className="flex-1">
+                          <p className="font-medium">
+                            {detalle.producto?.nombre || detalle.servicio?.nombre}
+                          </p>
+                          <p className="text-xs text-gray-600">Cantidad: {detalle.cantidad}</p>
+                        </div>
+                        <p className="font-semibold">₡{detalle.subtotal.toFixed(2)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Totales */}
+                <div className="border-t border-gray-300 pt-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal:</span>
+                    <span>₡{factura.subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Descuento:</span>
+                    <span>-₡{factura.descuento.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Impuesto:</span>
+                    <span>₡{factura.impuesto.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t">
+                    <span>Total:</span>
+                    <span className="text-[#4a9d9d]">₡{factura.montoTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-blue-600">
+                    <span>Monto Cancelado:</span>
+                    <span>₡{factura.montoCancelado.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Panel de Acciones */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6 space-y-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <ShoppingBag size={24} className="text-[#4a9d9d]" />
+                  Agregar Items
+                </h2>
+
+                <div className="space-y-3">
+                  <button
+                    onClick={() => {
+                      setTipoModal("producto")
+                      setMostrarModal(true)
+                      setSearchTerm("")
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-[#4a9d9d] text-white px-4 py-3 rounded-lg hover:bg-[#5aadad] transition font-medium shadow-sm"
+                  >
+                    <Package size={20} />
+                    Agregar Producto
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setTipoModal("servicio")
+                      setMostrarModal(true)
+                      setSearchTerm("")
+                    }}
+                    className="w-full flex items-center justify-center gap-2 bg-[#9d8560] text-white px-4 py-3 rounded-lg hover:bg-[#b89d7d] transition font-medium shadow-sm"
+                  >
+                    <Briefcase size={20} />
+                    Agregar Servicio
+                  </button>
+                </div>
+              </div>
+
+              {/* Información de Venta */}
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-2">
+                  <User size={18} />
+                  Datos de Venta
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">ID Vendedor *</label>
+                    <input
+                      type="number"
+                      value={idVendedor}
+                      onChange={(e) => setIdVendedor(e.target.value)}
+                      placeholder="Ej: 1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">ID Cliente (Opcional)</label>
+                    <input
+                      type="number"
+                      value={idCliente}
+                      onChange={(e) => setIdCliente(e.target.value)}
+                      placeholder="Ej: 2"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Monto Cancelado</label>
+                    <input
+                      type="number"
+                      value={montoCancelado}
+                      onChange={(e) => setMontoCancelado(e.target.value)}
+                      placeholder="0.00"
+                      step="0.01"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d]"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Resumen del Carrito */}
-              <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="border-t border-gray-200 pt-6">
                 <h3 className="text-sm font-semibold text-gray-600 uppercase mb-3">Resumen</h3>
                 <div className="space-y-2 text-sm">
+                  {idFacturaActual && (
+                    <div className="flex justify-between text-gray-600 mb-2">
+                      <span>Factura #:</span>
+                      <span className="font-medium text-[#4a9d9d]">{idFacturaActual}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-gray-600">
                     <span>Items:</span>
                     <span className="font-medium">{carrito.length}</span>
@@ -187,10 +419,20 @@ const VentasModule = () => {
 
                 <button
                   onClick={procesarVenta}
-                  disabled={carrito.length === 0}
-                  className="w-full mt-4 bg-[#9d8560] text-white px-4 py-3 rounded-lg hover:bg-[#b89d7d] transition font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  disabled={carrito.length === 0 || !idVendedor || loadingFactura}
+                  className="w-full mt-4 bg-[#9d8560] text-white px-4 py-3 rounded-lg hover:bg-[#b89d7d] transition font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Procesar Venta
+                  {loadingFactura ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      <Receipt size={20} />
+                      Procesar Venta
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -300,7 +542,7 @@ const VentasModule = () => {
 
       {/* Modal para Agregar Items */}
       {mostrarModal && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-xs bg-opacity-40 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col">
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
               <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
