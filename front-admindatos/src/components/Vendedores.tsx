@@ -1,8 +1,38 @@
 import type React from "react"
-import { useState } from "react"
-import { Plus, Search, Users, AlertCircle, X, Edit2, Trash2, CheckCircle, Eye, EyeOff } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Plus, Search, Users, AlertCircle, X, Edit2, Trash2, CheckCircle, Eye, EyeOff, Shield, UserCog } from "lucide-react"
 import { useVendedores } from "../hooks/useVendedores"
-import type { VendedorDto, AgregarVendedorDto, ActualizarVendedorRequest } from "../types/vendedor"
+import type { VendedorActivoDto, AgregarVendedorDto, ActualizarVendedorRequest } from "../types/vendedor"
+import type { Vendedor_RolDto } from "../types/vendedor_rol"
+import { rolesService } from "../services/rolService"
+import type { Rol } from "../types/rol"
+import { useVendedor_Rol } from "../hooks/useVendedor_Rol"
+
+// Interfaz para roles disponibles (temporal - ajustar según tu API de roles)
+const useRolesDisponibles = () => {
+  const [roles, setRoles] = useState<Rol[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        const data = await rolesService.getAllRoles()
+        setRoles(data)
+      } catch (err: any) {
+        setError(err?.response?.data?.message || "Error al cargar roles")
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetch()
+  }, [])
+
+  return { roles, loading, error }
+}
+
 
 // Modal de confirmación reutilizable
 const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "danger" }: any) => {
@@ -50,11 +80,162 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "dang
   )
 }
 
+// Modal para gestionar roles del vendedor
+const RolesModal = ({ 
+  isOpen, 
+  onClose, 
+  vendedor, 
+  rolesDisponibles,
+  vendedorRoles,
+  onAsignarRol,
+  onEliminarRol
+}: any) => {
+  if (!isOpen || !vendedor) return null
+
+  // Obtener los roles actuales del vendedor desde vendedorRoles
+  const rolesAsignados = vendedorRoles
+    .filter((vr: any) => vr.idVendedor === vendedor.idVendedor)
+    .map((vr: any) => vr.idRol)
+
+  const [selectedRoles, setSelectedRoles] = useState<number[]>(rolesAsignados)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setSelectedRoles(rolesAsignados)
+  }, [vendedorRoles, vendedor])
+
+  const toggleRol = (idRol: number) => {
+    if (selectedRoles.includes(idRol)) {
+      setSelectedRoles(selectedRoles.filter(r => r !== idRol))
+    } else {
+      setSelectedRoles([...selectedRoles, idRol])
+    }
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      // Roles a agregar (están seleccionados pero no asignados)
+      const rolesAAgregar = selectedRoles.filter(r => !rolesAsignados.includes(r))
+      
+      // Roles a eliminar (están asignados pero no seleccionados)
+      const rolesAEliminar = rolesAsignados.filter((r: number) => !selectedRoles.includes(r))
+
+      // Agregar nuevos roles
+      for (const idRol of rolesAAgregar) {
+        await onAsignarRol(vendedor.idVendedor, idRol)
+      }
+
+      // Eliminar roles no seleccionados - Ahora pasa idVendedor e idRol directamente
+      for (const idRol of rolesAEliminar) {
+        console.log(vendedor.idVendedor, idRol)
+        await onEliminarRol(vendedor.idVendedor, idRol)
+      }
+
+      onClose()
+    } catch (error: any) {
+      console.error("Error al guardar roles:", error)
+      alert(error.message || "Error al guardar roles")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-xs bg-opacity-40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-[#4a9d9d]/10 flex items-center justify-center">
+              <Shield className="text-[#4a9d9d]" size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-gray-800">Gestionar Roles</h2>
+              <p className="text-sm text-gray-500">
+                {vendedor.nombre} {vendedor.apellido1}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="p-6">
+          <p className="text-sm text-gray-600 mb-4">
+            Selecciona los roles que deseas asignar a este vendedor
+          </p>
+
+          <div className="space-y-3">
+            {rolesDisponibles.map((rol: Rol) => (
+              <div
+                key={rol.idRol}
+                className={`border-2 rounded-lg p-4 cursor-pointer transition ${
+                  selectedRoles.includes(rol.idRol)
+                    ? "border-[#4a9d9d] bg-[#4a9d9d]/5"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+                onClick={() => toggleRol(rol.idRol)}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="pt-0.5">
+                    <div
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition ${
+                        selectedRoles.includes(rol.idRol)
+                          ? "bg-[#4a9d9d] border-[#4a9d9d]"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      {selectedRoles.includes(rol.idRol) && (
+                        <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
+                          <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900">{rol.nombre}</h3>
+                    {rol.descripcion && (
+                      <p className="text-sm text-gray-500 mt-0.5">{rol.descripcion}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+            <button
+              onClick={onClose}
+              disabled={saving}
+              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition disabled:opacity-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition shadow-sm disabled:opacity-50"
+            >
+              {saving ? "Guardando..." : "Guardar Roles"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const VendedoresModule = () => {
-  const { vendedores, loading, error, createVendedor, updateVendedor, desactivarVendedor } = useVendedores()
+  const { vendedores, loading, error, createVendedor, updateVendedor, desactivarVendedor, fetchVendedores } = useVendedores()
+  const { vendedor_rol, createVendedor_Rol, deleteVendedor_Rol } = useVendedor_Rol()
+  const { roles: rolesDisponibles } = useRolesDisponibles() // REEMPLAZAR con tu hook real
+  
   const [searchTerm, setSearchTerm] = useState("")
   const [showModal, setShowModal] = useState(false)
-  const [editingVendedor, setEditingVendedor] = useState<VendedorDto | null>(null)
+  const [showRolesModal, setShowRolesModal] = useState(false)
+  const [selectedVendedor, setSelectedVendedor] = useState<VendedorActivoDto | null>(null)
+  const [editingVendedor, setEditingVendedor] = useState<VendedorActivoDto | null>(null)
   const [formError, setFormError] = useState("")
   const [showPassword, setShowPassword] = useState(false)
 
@@ -82,14 +263,15 @@ const VendedoresModule = () => {
     const apellido2 = v?.apellido2?.toLowerCase() || ""
     const cedula = v?.cedula?.toLowerCase() || ""
     const correo = v?.correo?.toLowerCase() || ""
+    const roles = v?.roles?.toLowerCase() || ""
     const termino = searchTerm.toLowerCase()
 
     return nombre.includes(termino) || apellido1.includes(termino) || 
            apellido2.includes(termino) || cedula.includes(termino) || 
-           correo.includes(termino)
+           correo.includes(termino) || roles.includes(termino)
   })
 
-  const handleOpenModal = (vendedor?: VendedorDto) => {
+  const handleOpenModal = (vendedor?: VendedorActivoDto) => {
     if (vendedor) {
       setEditingVendedor(vendedor)
       setFormData({
@@ -123,6 +305,30 @@ const VendedoresModule = () => {
     setEditingVendedor(null)
     setFormError("")
     setShowPassword(false)
+  }
+
+  const handleOpenRolesModal = (vendedor: VendedorActivoDto) => {
+    setSelectedVendedor(vendedor)
+    setShowRolesModal(true)
+  }
+
+  const handleCloseRolesModal = () => {
+    setShowRolesModal(false)
+    setSelectedVendedor(null)
+    // Refrescar la lista de vendedores para actualizar los roles en la tabla
+    fetchVendedores()
+  }
+
+  const handleAsignarRol = async (idVendedor: number, idRol: number) => {
+    const vendedorRolDto: Vendedor_RolDto = {
+      idVendedor,
+      idRol
+    }
+    await createVendedor_Rol(vendedorRolDto)
+  }
+
+  const handleEliminarRol = async (idVendedor: number, idRol: number) => {
+    await deleteVendedor_Rol({idVendedor, idRol})
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -194,7 +400,7 @@ const VendedoresModule = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
               <input
                 type="text"
-                placeholder="Buscar por nombre, apellidos, cédula o correo..."
+                placeholder="Buscar por nombre, apellidos, cédula, correo o roles..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
@@ -232,6 +438,9 @@ const VendedoresModule = () => {
                         Correo
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Roles
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         Estado
                       </th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -249,6 +458,22 @@ const VendedoresModule = () => {
                         <td className="px-4 py-3 text-sm text-gray-600">{vendedor.telefono || 'N/A'}</td>
                         <td className="px-4 py-3 text-sm text-gray-600">{vendedor.correo}</td>
                         <td className="px-4 py-3 text-sm">
+                          {vendedor.roles ? (
+                            <div className="flex flex-wrap gap-1">
+                              {vendedor.roles.split(',').map((rol, index) => (
+                                <span
+                                  key={index}
+                                  className="inline-flex px-2 py-0.5 rounded-md text-xs font-medium bg-[#4a9d9d]/10 text-[#4a9d9d]"
+                                >
+                                  {rol.trim()}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-xs italic">Sin roles asignados</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
                           <span
                             className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                               vendedor.estado ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
@@ -259,6 +484,13 @@ const VendedoresModule = () => {
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <div className="flex gap-2">
+                            <button
+                              onClick={() => handleOpenRolesModal(vendedor)}
+                              className="text-purple-600 hover:text-purple-800 p-1.5 hover:bg-purple-50 rounded-lg transition"
+                              title="Gestionar Roles"
+                            >
+                              <UserCog size={16} />
+                            </button>
                             <button
                               onClick={() => handleOpenModal(vendedor)}
                               className="text-[#4a9d9d] hover:text-[#5aadad] p-1.5 hover:bg-[#4a9d9d]/10 rounded-lg transition"
@@ -312,7 +544,7 @@ const VendedoresModule = () => {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Cédula *</label>
                   <input
@@ -413,17 +645,28 @@ const VendedoresModule = () => {
                     Cancelar
                   </button>
                   <button
-                    type="submit"
+                    onClick={handleSubmit}
                     className="flex-1 px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition shadow-sm"
                   >
                     {editingVendedor ? "Actualizar" : "Crear"}
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Modal Roles */}
+      <RolesModal
+        isOpen={showRolesModal}
+        onClose={handleCloseRolesModal}
+        vendedor={selectedVendedor}
+        rolesDisponibles={rolesDisponibles}
+        vendedorRoles={vendedor_rol}
+        onAsignarRol={handleAsignarRol}
+        onEliminarRol={handleEliminarRol}
+      />
 
       <ConfirmModal
         {...confirmModal}

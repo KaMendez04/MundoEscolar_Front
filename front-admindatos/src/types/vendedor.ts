@@ -1,13 +1,4 @@
-export interface Vendedor {
-    idVendedor: number;
-    nombre: string;
-    apellido1: string;
-    apellido2: string | null;
-    telefono: string | null;
-    correo: string;
-    clave: string;
-    estado: boolean;
-}
+import type { Rol } from "./rol";
 
 export interface VendedorPorRolDto {
     idVendedor: number;
@@ -41,7 +32,7 @@ export interface VendedorRol {
     correo: string;
     clave: string;
     estado: boolean;
-    roles: string;
+    roles: Rol[];            // <- arreglo de objetos Rol
 }
 
 export interface VendedorPorCorreoDto {
@@ -75,8 +66,20 @@ export interface ActualizarVendedorRequest {
     clave: string | null;
 }
 
+export interface VendedorActivoDto {
+    idVendedor: number;
+    cedula: string;
+    nombre: string;
+    apellido1: string;
+    apellido2: string | null;
+    telefono: string | null;
+    correo: string;
+    estado: boolean;
+    roles: string;
+}
+
 export interface VendedorListResult {
-    items: VendedorDto[];
+    items: VendedorActivoDto[];
     total: number;
     page: number;
     pageSize: number;
