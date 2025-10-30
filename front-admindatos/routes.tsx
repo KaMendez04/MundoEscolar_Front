@@ -7,7 +7,7 @@ import VentasPage from "./src/page/VentasPage";
 import InventarioPage from "./src/page/InventarioPage";
 import VentasServicio  from "./src/page/ventasServio";
 import ClientePege from "./src/page/clientesPage";
-import FacturasPage from "./src/page/FacturasPage";
+import FacturasPage from "./src/page/FacturasTablaPage";
 
 
 

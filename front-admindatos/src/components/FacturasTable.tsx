@@ -8,7 +8,7 @@ import {
   User,
   Eye,
 } from "lucide-react"
-import { useFacturas } from "../hooks/useFacturas"
+import { useFacturas } from "../hooks/useFacturasTabla"
 import type { Factura } from "../types/facturas"
 
 // Modal de Detalles
