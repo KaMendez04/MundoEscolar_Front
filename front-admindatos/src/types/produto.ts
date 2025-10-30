@@ -7,8 +7,8 @@ export interface Producto {
   impuesto: number;
   descuento: number;
   idCategoria: number;
-  nombreCategoria?: string;
   estado?: boolean;
+  Categoria?: Categoria;
 }
 
 export interface CreateProductoDto {
@@ -34,4 +34,6 @@ export interface UpdateProductoDto {
 export interface Categoria {
   idCategoria: number;
   nombre: string;
+  descripcion: string;
+  estado: boolean;
 }

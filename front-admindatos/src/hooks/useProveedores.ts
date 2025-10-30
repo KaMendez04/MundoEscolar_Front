@@ -3,37 +3,25 @@ import { useState, useEffect } from 'react';
 import { proveedorService } from '../services/proveedorService';
 import type { 
   CreateProveedorDto, 
-  UpdateProveedorDto, 
-  FiltrosProveedor, 
-  ResultadoPaginadoProveedor 
+  UpdateProveedorDto
 } from '../types/proveedor';
 
-export const useProveedores = (filtrosIniciales?: FiltrosProveedor) => {
-  const [resultado, setResultado] = useState<ResultadoPaginadoProveedor>({
-    proveedores: [],
-    total: 0,
-    page: 1,
-    pageSize: 10,
-    totalPages: 0,
-  });
+export const useProveedores = () => {
+
+  const [proveedores, setProveedores] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [filtros, setFiltros] = useState<FiltrosProveedor>(
-    filtrosIniciales || { page: 1, pageSize: 10 }
-  );
 
-  const fetchProveedores = async (nuevosFiltros?: FiltrosProveedor) => {
+  const fetchProveedores = async () => {
     try {
       setLoading(true);
       setError(null);
-      const filtrosAUsar = nuevosFiltros || filtros;
-      const data = await proveedorService.obtenerProveedores(filtrosAUsar);
-      setResultado(data);
-      if (nuevosFiltros) {
-        setFiltros(filtrosAUsar);
-      }
+      const response = await proveedorService.obtenerProveedores();
+      setProveedores(response);
+      return response;
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cargar proveedores');
+      setProveedores(null);
       console.error('Error fetching proveedores:', err);
     } finally {
       setLoading(false);
@@ -97,19 +85,13 @@ export const useProveedores = (filtrosIniciales?: FiltrosProveedor) => {
   };
 
   return {
-    proveedores: resultado.proveedores,
-    total: resultado.total,
-    page: resultado.page,
-    pageSize: resultado.pageSize,
-    totalPages: resultado.totalPages,
+    proveedores,
     loading,
     error,
-    filtros,
     insertarProveedor,
     actualizarProveedor,
     desactivarProveedor,
     activarProveedor,
     fetchProveedores,
-    setFiltros,
   };
 };

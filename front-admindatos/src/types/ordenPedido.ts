@@ -1,46 +1,50 @@
+import type { DetalleOrdenPedido } from "./detalleOrdenPedido";
+import type { Proveedor } from "./proveedor";
+
 // types/ordenPedido.ts
 export interface OrdenPedido {
   idOrdenPedido: number;
   numeroOrden: number;
-  fecha: string;
-  cedulaJuridica: string;
-  estadoDePago: boolean;
+  subtotal: number;
+  descuento: number;
+  impuesto: number;
+  montoTotal: number;
+  montoCancelado: number;
+  fechaEmision: string;
+  estadoPago: boolean;
+  idProveedor: number;
+  proveedor: Proveedor;
+  detalles: DetalleOrdenPedido[];
 }
 
-export interface OrdenPedidoConProveedor {
+export interface VistaOrdenPedido {
   idOrdenPedido: number;
   numeroOrden: number;
-  fecha: string;
-  cedulaJuridica: string;
-  nombreProveedor: string;
-  estadoDePago: boolean;
+  subtotal: number;
+  descuento: number;
+  impuesto: number;
+  montoTotal: number;
+  montoCancelado: number;
+  fechaEmision: string;
+  estadoPago: string;
+  idProveedor: number;
+  proveedor: Proveedor;
+  detalles: DetalleOrdenPedido[];
 }
 
 export interface CreateOrdenPedidoDto {
   numeroOrden: number;
-  cedulaJuridica: string;
-  estadoDePago: boolean;
 }
 
-export interface UpdateEstadoOrdenPedidoDto {
-  numeroOrden: number;
-  estadoDePago: boolean;
+export interface UpdateOrdenPedidoDto {
+  IdOrdenPedido: number;
+  EstadoPago?: boolean;
+  IdProveedor?: number;
+  MontoCancelado?: number;
 }
 
-export interface FiltrosOrdenPedido {
-  buscar?: string;
-  estadoDePago?: boolean;
-  fechaInicio?: string;
-  fechaFin?: string;
-  cedulaJuridica?: string;
-  page: number;
-  pageSize: number;
+export interface InsertarOrdenPedidoResponse {
+  idOrdenPedido?: number;
+  mensajes: string[];
 }
 
-export interface ResultadoPaginadoOrdenPedido {
-  ordenes: OrdenPedidoConProveedor[];
-  total: number;
-  page: number;
-  pageSize: number;
-  totalPages: number;
-}

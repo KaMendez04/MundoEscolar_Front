@@ -1,22 +1,24 @@
+import type { Producto } from "./produto";
+
 // types/detalleOrdenPedido.ts
 export interface DetalleOrdenPedido {
-  idDetalleOrdenPedido: number;
-  cantidad: number;
-  idProducto: number;
-  nombreProducto: string;
-  monto: number;
-  impuesto: number;
-  descuento: number;
-  stock: number;
-  subtotal: number;
+  IdDetalleOrdenPedido: number;
+  Cantidad: number;
+  Subtotal: number;
+  Impuesto: number;
+  Descuento: number;
+  IdProducto: number;
+  IdOrdenPedido: number;
+  producto: Producto;
 }
 
 export interface CreateDetalleOrdenPedidoDto {
-  cantidad: number;
-  idProducto: number;
+  IdOrdenPedido: number;
+  Cantidad: number;
+  IdProducto: number;
 }
 
 export interface UpdateDetalleOrdenPedidoDto {
-  cantidad: number;
-  idProducto: number;
+  Cantidad: number;
+  IdProducto: number;
 }

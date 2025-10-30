@@ -2,30 +2,30 @@
 import client from '../Client/ConfigClient';
 import type { 
   OrdenPedido,
-  CreateOrdenPedidoDto, 
-  UpdateEstadoOrdenPedidoDto, 
-  FiltrosOrdenPedido, 
-  ResultadoPaginadoOrdenPedido 
+  CreateOrdenPedidoDto,
+  UpdateOrdenPedidoDto,
+  VistaOrdenPedido,
+  InsertarOrdenPedidoResponse,
 } from '../types/ordenPedido';
 
 export const ordenPedidoService = {
-  insertarOrdenPedido: async (orden: CreateOrdenPedidoDto): Promise<string[]> => {
-    const response = await client.post<string[]>('/OrdenPedido/', orden);
+  insertarOrdenPedido: async (orden: CreateOrdenPedidoDto): Promise<InsertarOrdenPedidoResponse> => {
+    const response = await client.post<InsertarOrdenPedidoResponse>('/OrdenPedido/', orden);
     return response.data;
   },
 
-  cambiarEstadoPago: async (estado: UpdateEstadoOrdenPedidoDto): Promise<string[]> => {
-    const response = await client.patch<string[]>('/OrdenPedido/CambiarEstado', estado);
+  cambiarEstadoPago: async (estado: UpdateOrdenPedidoDto): Promise<string[]> => {
+    const response = await client.patch<string[]>('/OrdenPedido/Actualizar', estado);
     return response.data;
   },
 
-  obtenerOrdenPedidos: async (filtros: FiltrosOrdenPedido): Promise<ResultadoPaginadoOrdenPedido> => {
-    const response = await client.get<ResultadoPaginadoOrdenPedido>('/OrdenPedido', { params: filtros });
+  obtenerOrdenPedidos: async (): Promise<VistaOrdenPedido> => {
+    const response = await client.get<VistaOrdenPedido>('/OrdenPedido');
     return response.data;
   },
 
-  obtenerOrdenPedidoPorNumero: async (numeroOrden: number): Promise<OrdenPedido> => {
-    const response = await client.get<OrdenPedido>(`/OrdenPedido/${numeroOrden}`);
+  obtenerOrdenPedidoPorId: async (id: number): Promise<OrdenPedido> => {
+    const response = await client.get<OrdenPedido>(`/OrdenPedido/${id}`);
     return response.data;
   },
 };
