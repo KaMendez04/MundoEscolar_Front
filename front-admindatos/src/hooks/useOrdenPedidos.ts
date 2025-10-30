@@ -2,38 +2,27 @@
 import { useState, useEffect } from 'react';
 import { ordenPedidoService } from '../services/ordenPedidoService';
 import type { 
-  CreateOrdenPedidoDto, 
-  UpdateEstadoOrdenPedidoDto, 
-  FiltrosOrdenPedido, 
-  ResultadoPaginadoOrdenPedido 
+  CreateOrdenPedidoDto,
+  UpdateOrdenPedidoDto,
+  InsertarOrdenPedidoResponse,
 } from '../types/ordenPedido';
 
-export const useOrdenPedidos = (filtrosIniciales?: FiltrosOrdenPedido) => {
-  const [resultado, setResultado] = useState<ResultadoPaginadoOrdenPedido>({
-    ordenes: [],
-    total: 0,
-    page: 1,
-    pageSize: 10,
-    totalPages: 0,
-  });
+export const useOrdenPedidos = () => {
+
+  const [ordenes, setOrdenes] = useState<any>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [filtros, setFiltros] = useState<FiltrosOrdenPedido>(
-    filtrosIniciales || { page: 1, pageSize: 10 }
-  );
 
-  const fetchOrdenPedidos = async (nuevosFiltros?: FiltrosOrdenPedido) => {
+  const fetchOrdenPedidos = async () => {
     try {
       setLoading(true);
       setError(null);
-      const filtrosAUsar = nuevosFiltros || filtros;
-      const data = await ordenPedidoService.obtenerOrdenPedidos(filtrosAUsar);
-      setResultado(data);
-      if (nuevosFiltros) {
-        setFiltros(filtrosAUsar);
-      }
+      const response = await ordenPedidoService.obtenerOrdenPedidos();
+      setOrdenes(response);
+      return response;
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cargar órdenes de pedido');
+      setOrdenes([]);
       console.error('Error fetching orden pedidos:', err);
     } finally {
       setLoading(false);
@@ -44,12 +33,11 @@ export const useOrdenPedidos = (filtrosIniciales?: FiltrosOrdenPedido) => {
     fetchOrdenPedidos();
   }, []);
 
-  const insertarOrdenPedido = async (orden: CreateOrdenPedidoDto) => {
+  const insertarOrdenPedido = async (orden: CreateOrdenPedidoDto): Promise<InsertarOrdenPedidoResponse> => {
     try {
       setError(null);
-      const mensajes = await ordenPedidoService.insertarOrdenPedido(orden);
-      await fetchOrdenPedidos();
-      return mensajes;
+      const response = await ordenPedidoService.insertarOrdenPedido(orden);
+      return response;
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al insertar orden de pedido';
       setError(errorMsg);
@@ -57,11 +45,10 @@ export const useOrdenPedidos = (filtrosIniciales?: FiltrosOrdenPedido) => {
     }
   };
 
-  const cambiarEstadoPago = async (estado: UpdateEstadoOrdenPedidoDto) => {
+  const cambiarEstadoPago = async (updateDto: UpdateOrdenPedidoDto) => {
     try {
       setError(null);
-      const mensajes = await ordenPedidoService.cambiarEstadoPago(estado);
-      await fetchOrdenPedidos();
+      const mensajes = await ordenPedidoService.cambiarEstadoPago(updateDto);
       return mensajes;
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al cambiar estado de pago';
@@ -71,17 +58,11 @@ export const useOrdenPedidos = (filtrosIniciales?: FiltrosOrdenPedido) => {
   };
 
   return {
-    ordenes: resultado.ordenes,
-    total: resultado.total,
-    page: resultado.page,
-    pageSize: resultado.pageSize,
-    totalPages: resultado.totalPages,
+    ordenes,
     loading,
     error,
-    filtros,
     insertarOrdenPedido,
     cambiarEstadoPago,
     fetchOrdenPedidos,
-    setFiltros,
   };
 };

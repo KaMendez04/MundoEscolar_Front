@@ -4,8 +4,7 @@ import type {
   Proveedor, 
   CreateProveedorDto, 
   UpdateProveedorDto, 
-  FiltrosProveedor, 
-  ResultadoPaginadoProveedor 
+  VistaProveedor
 } from '../types/proveedor';
 
 export const proveedorService = {
@@ -29,8 +28,8 @@ export const proveedorService = {
     return response.data;
   },
 
-  obtenerProveedores: async (filtros: FiltrosProveedor): Promise<ResultadoPaginadoProveedor> => {
-    const response = await client.get<ResultadoPaginadoProveedor>('/Proveedor', { params: filtros });
+  obtenerProveedores: async (): Promise<VistaProveedor[]> => {
+    const response = await client.get<VistaProveedor[]>('/Proveedor');
     return response.data;
   },
 

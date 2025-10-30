@@ -14,7 +14,7 @@ import FacturasPage from "./src/page/FacturasPage";
 
 // 1. Definir root
 import ReportesPage from "./src/page/ReportesPage";
-import VendedoresPage from "./src/page/vendedorespage";
+import VendedoresPage from "./src/page/vendedoresPage";
 const rootRoute = createRootRoute({
   component: RootLayout,
 });

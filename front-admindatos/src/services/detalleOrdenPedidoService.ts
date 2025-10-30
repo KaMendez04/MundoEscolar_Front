@@ -6,10 +6,6 @@ import type {
 } from '../types/detalleOrdenPedido';
 
 export const detalleOrdenPedidoService = {
-  getAllDetalles: async (): Promise<DetalleOrdenPedido[]> => {
-    const response = await client.get<DetalleOrdenPedido[]>('/DetalleOrdenPedido');
-    return response.data;
-  },
 
   getDetalleById: async (id: number): Promise<DetalleOrdenPedido> => {
     const response = await client.get<DetalleOrdenPedido>(`/DetalleOrdenPedido/${id}`);
@@ -24,9 +20,5 @@ export const detalleOrdenPedidoService = {
   updateDetalle: async (id: number, detalle: UpdateDetalleOrdenPedidoDto): Promise<DetalleOrdenPedido> => {
     const response = await client.put<DetalleOrdenPedido>(`/DetalleOrdenPedido/${id}`, detalle);
     return response.data;
-  },
-
-  deleteDetalle: async (id: number): Promise<void> => {
-    await client.delete(`/DetalleOrdenPedido/${id}`);
   },
 };

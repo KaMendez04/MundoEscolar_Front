@@ -12,17 +12,16 @@ import {
   AlertCircle,
   Calendar,
   Filter,
-  ChevronLeft,
-  ChevronRight,
   Trash2,
   ShoppingCart,
+  Eye,
 } from "lucide-react"
 import { useProveedores } from "../hooks/useProveedores"
 import { useOrdenPedidos } from "../hooks/useOrdenPedidos"
 import { useDetalleOrdenPedido } from "../hooks/useDetalleOrdenPedido"
 import { useProductos } from "../hooks/useProdutos"
-import type { Proveedor, CreateProveedorDto } from "../types/proveedor"
-import type { CreateOrdenPedidoDto } from "../types/ordenPedido"
+import type { Proveedor, CreateProveedorDto, VistaProveedor } from "../types/proveedor"
+import type { CreateOrdenPedidoDto, VistaOrdenPedido } from "../types/ordenPedido"
 import type { CreateDetalleOrdenPedidoDto } from "../types/detalleOrdenPedido"
 
 // Función para formatear cédula jurídica
@@ -93,14 +92,10 @@ const ProveedoresOrdenesModule = () => {
     proveedores,
     loading: loadingProveedores,
     error: errorProveedores,
-    page: pageProveedores,
-    totalPages: totalPagesProveedores,
     insertarProveedor,
     actualizarProveedor,
     desactivarProveedor,
     activarProveedor,
-    fetchProveedores,
-    setFiltros: setFiltrosProveedores,
   } = useProveedores()
 
   const [showModalProveedor, setShowModalProveedor] = useState(false)
@@ -119,19 +114,14 @@ const ProveedoresOrdenesModule = () => {
     ordenes,
     loading: loadingOrdenes,
     error: errorOrdenes,
-    page: pageOrdenes,
-    totalPages: totalPagesOrdenes,
     insertarOrdenPedido,
     cambiarEstadoPago,
     fetchOrdenPedidos,
-    setFiltros: setFiltrosOrdenes,
   } = useOrdenPedidos()
 
   const [showModalOrden, setShowModalOrden] = useState(false)
   const [formDataOrden, setFormDataOrden] = useState<CreateOrdenPedidoDto>({
     numeroOrden: 0,
-    cedulaJuridica: "",
-    estadoDePago: false,
   })
   const [formErrorOrden, setFormErrorOrden] = useState("")
   const [searchOrdenes, setSearchOrdenes] = useState("")
@@ -139,15 +129,26 @@ const ProveedoresOrdenesModule = () => {
   const [filtroFechaInicio, setFiltroFechaInicio] = useState("")
   const [filtroFechaFin, setFiltroFechaFin] = useState("")
 
+  // Estados para el wizard de creación de orden
+  const [showWizardModal, setShowWizardModal] = useState(false)
+  const [wizardStep, setWizardStep] = useState(1)
+  const [wizardOrder, setWizardOrder] = useState<CreateOrdenPedidoDto>({ numeroOrden: 0 })
+  const [wizardDetails, setWizardDetails] = useState<CreateDetalleOrdenPedidoDto[]>([])
+  const [wizardFinal, setWizardFinal] = useState({ idProveedor: 0, estadoPago: false, montoCancelado: 0 })
+  const [wizardOrderId, setWizardOrderId] = useState<number | null>(null)
+  const [wizardError, setWizardError] = useState("")
+  const [wizardLoading, setWizardLoading] = useState(false)
+
+  // Estado para modal de ver orden
+  const [showViewModal, setShowViewModal] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState<VistaOrdenPedido | null>(null)
+
   // Estados Detalles
   const {
-    detalles,
     loading: loadingDetalles,
     error: errorDetalles,
     createDetalle,
     updateDetalle,
-    deleteDetalle,
-    fetchDetalles,
   } = useDetalleOrdenPedido()
 
   const { productos } = useProductos()
@@ -155,8 +156,9 @@ const ProveedoresOrdenesModule = () => {
   const [showModalDetalle, setShowModalDetalle] = useState(false)
   const [editingDetalle, setEditingDetalle] = useState<any | null>(null)
   const [formDataDetalle, setFormDataDetalle] = useState<CreateDetalleOrdenPedidoDto>({
-    cantidad: 1,
-    idProducto: 0,
+    IdOrdenPedido: 0,
+    Cantidad: 1,
+    IdProducto: 0,
   })
   const [formErrorDetalle, setFormErrorDetalle] = useState("")
   const [searchDetalles, setSearchDetalles] = useState("")
@@ -166,7 +168,7 @@ const ProveedoresOrdenesModule = () => {
     isOpen: boolean
     title: string
     message: string
-    onConfirm: () => void
+    onConfirm: () => void | Promise<void>
     type: "danger" | "success"
   }>({
     isOpen: false,
@@ -176,10 +178,25 @@ const ProveedoresOrdenesModule = () => {
     type: "danger",
   })
 
+  interface VistaToProveedor {
+    idProveedor: number;
+    cedulaJuridica: string;
+    nombre: string;
+    telefono: string;
+    estado: boolean;
+  }
+
   // Handlers Proveedores
-  const handleOpenModalProveedor = (proveedor?: Proveedor) => {
+  const handleOpenModalProveedor = (proveedor?: VistaProveedor) => {
     if (proveedor) {
-      setEditingProveedor(proveedor)
+        const payload: VistaToProveedor = {
+        idProveedor: proveedor.idProveedor,
+         cedulaJuridica: proveedor.cedulaJuridica,
+         nombre: proveedor.nombre,
+         telefono: proveedor.telefono,
+         estado: proveedor.estado === 'Activo',
+       }
+      setEditingProveedor(payload)
       setFormDataProveedor({
         cedulaJuridica: proveedor.cedulaJuridica,
         nombre: proveedor.nombre,
@@ -219,16 +236,17 @@ const ProveedoresOrdenesModule = () => {
     }
   }
 
-  const handleToggleEstadoProveedor = (proveedor: Proveedor) => {
-    const accion = proveedor.estado ? "desactivar" : "activar"
+  const handleToggleEstadoProveedor = (proveedor: VistaProveedor) => {
+    const esActivo = proveedor.estado === 'Activo'
+    const accion = esActivo ? "desactivar" : "activar"
     setConfirmModal({
       isOpen: true,
       title: `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} Proveedor?`,
       message: `¿Está seguro de ${accion} al proveedor "${proveedor.nombre}"?`,
-      type: proveedor.estado ? "danger" : "success",
+      type: esActivo ? "danger" : "success",
       onConfirm: async () => {
         try {
-          if (proveedor.estado) {
+          if (esActivo) {
             await desactivarProveedor(proveedor.cedulaJuridica)
           } else {
             await activarProveedor(proveedor.cedulaJuridica)
@@ -240,43 +258,100 @@ const ProveedoresOrdenesModule = () => {
     })
   }
 
-  const handleBuscarProveedores = () => {
-    setFiltrosProveedores({
-      buscar: searchProveedores || undefined,
-      estado: filtroEstadoProveedor,
-      page: 1,
-      pageSize: 10,
-    })
-    fetchProveedores({
-      buscar: searchProveedores || undefined,
-      estado: filtroEstadoProveedor,
-      page: 1,
-      pageSize: 10,
-    })
-  }
-
-  const handlePaginacionProveedores = (newPage: number) => {
-    setFiltrosProveedores((prev) => ({ ...prev, page: newPage }))
-    fetchProveedores({
-      ...{ buscar: searchProveedores || undefined, estado: filtroEstadoProveedor, pageSize: 10 },
-      page: newPage,
-    })
-  }
-
   // Handlers Órdenes
   const handleOpenModalOrden = () => {
-    setFormDataOrden({
-      numeroOrden: 0,
-      cedulaJuridica: "",
-      estadoDePago: false,
-    })
-    setFormErrorOrden("")
-    setShowModalOrden(true)
+    setWizardStep(1)
+    setWizardOrder({ numeroOrden: 0 })
+    setWizardDetails([])
+    setWizardFinal({ idProveedor: 0, estadoPago: false, montoCancelado: 0 })
+    setWizardOrderId(null)
+    setWizardError("")
+    setShowWizardModal(true)
   }
 
   const handleCloseModalOrden = () => {
     setShowModalOrden(false)
     setFormErrorOrden("")
+  }
+
+  const handleCloseModalDetalle = () => {
+    setShowModalDetalle(false)
+    setEditingDetalle(null)
+    setFormErrorDetalle("")
+  }
+
+  const handleCloseWizardModal = () => {
+    if (wizardStep < 3) return // No cerrar hasta finalizar
+    setShowWizardModal(false)
+  }
+
+  const handleWizardNext = async () => {
+    setWizardLoading(true)
+    try {
+      if (wizardStep === 1) {
+        setWizardError("")
+        const response = await insertarOrdenPedido(wizardOrder)
+        setWizardOrderId(response.idOrdenPedido || 0)
+        setWizardStep(2)
+      } else if (wizardStep === 2) {
+        setWizardError("")
+        // Crear detalles
+        for (const detail of wizardDetails) {
+          await createDetalle(detail)
+        }
+        setWizardStep(3)
+      } else if (wizardStep < 3) {
+        setWizardStep(wizardStep + 1)
+      }
+    } catch (err: any) {
+      setWizardError(err.message)
+    } finally {
+      setWizardLoading(false)
+    }
+  }
+
+  const handleWizardBack = () => {
+    if (wizardStep > 1) setWizardStep(wizardStep - 1)
+  }
+
+  const handleWizardFinish = async () => {
+    try {
+      setWizardError("")
+      if (!wizardOrderId) throw new Error("No hay orden creada")
+
+      // Actualizar orden con proveedor y pago
+      if (wizardFinal.idProveedor > 0 || wizardFinal.estadoPago || wizardFinal.montoCancelado > 0) {
+        await cambiarEstadoPago({
+          IdOrdenPedido: wizardOrderId,
+          EstadoPago: wizardFinal.estadoPago,
+          IdProveedor: wizardFinal.idProveedor,
+          MontoCancelado: wizardFinal.montoCancelado,
+        })
+      }
+
+      await fetchOrdenPedidos() // refresh final
+      setShowWizardModal(false)
+    } catch (err: any) {
+      setWizardError(err.message)
+    }
+  }
+
+  const handleAddWizardDetail = () => {
+    if (!wizardOrderId || wizardOrderId === 0) {
+      setWizardError("Primero debe crear la orden")
+      return
+    }
+    setWizardDetails([...wizardDetails, { IdOrdenPedido: wizardOrderId, Cantidad: 1, IdProducto: productos.length > 0 ? productos[0].idProducto : 0 }])
+  }
+
+  const handleUpdateWizardDetail = (index: number, field: string, value: any) => {
+    const newDetails = [...wizardDetails]
+    newDetails[index] = { ...newDetails[index], [field]: value }
+    setWizardDetails(newDetails)
+  }
+
+  const handleRemoveWizardDetail = (index: number) => {
+    setWizardDetails(wizardDetails.filter((_, i) => i !== index))
   }
 
   const handleSubmitOrden = async (e: React.FormEvent) => {
@@ -285,6 +360,7 @@ const ProveedoresOrdenesModule = () => {
 
     try {
       await insertarOrdenPedido(formDataOrden)
+      await fetchOrdenPedidos()
       handleCloseModalOrden()
     } catch (err: any) {
       setFormErrorOrden(err.message)
@@ -300,9 +376,12 @@ const ProveedoresOrdenesModule = () => {
       onConfirm: async () => {
         try {
           await cambiarEstadoPago({
-            numeroOrden: orden.numeroOrden,
-            estadoDePago: !orden.estadoDePago,
+            IdOrdenPedido: orden.idOrdenPedido,
+            EstadoPago: orden.estadoPago !== "Pagado",
+            IdProveedor: orden.proveedor?.idProveedor, // Usar el ID del proveedor si existe
+            MontoCancelado: orden.montoCancelado, // Asegúrate de que este campo se maneje correctamente si está en tu DTO
           })
+          await fetchOrdenPedidos()
         } catch (err: any) {
           alert(err.message)
         }
@@ -310,60 +389,33 @@ const ProveedoresOrdenesModule = () => {
     })
   }
 
-  const handleBuscarOrdenes = () => {
-    setFiltrosOrdenes({
-      buscar: searchOrdenes || undefined,
-      estadoDePago: filtroEstadoPago,
-      fechaInicio: filtroFechaInicio || undefined,
-      fechaFin: filtroFechaFin || undefined,
-      page: 1,
-      pageSize: 10,
-    })
-    fetchOrdenPedidos({
-      buscar: searchOrdenes || undefined,
-      estadoDePago: filtroEstadoPago,
-      fechaInicio: filtroFechaInicio || undefined,
-      fechaFin: filtroFechaFin || undefined,
-      page: 1,
-      pageSize: 10,
-    })
+  const handleViewOrder = (orden: VistaOrdenPedido) => {
+    setSelectedOrder(orden)
+    setShowViewModal(true)
   }
 
-  const handlePaginacionOrdenes = (newPage: number) => {
-    setFiltrosOrdenes((prev) => ({ ...prev, page: newPage }))
-    fetchOrdenPedidos({
-      buscar: searchOrdenes || undefined,
-      estadoDePago: filtroEstadoPago,
-      fechaInicio: filtroFechaInicio || undefined,
-      fechaFin: filtroFechaFin || undefined,
-      pageSize: 10,
-      page: newPage,
-    })
-  }
 
   // Handlers Detalles
-  const handleOpenModalDetalle = (detalle?: any) => {
+  // ** MODIFICACIÓN 2: Recibir ordenId para inicializar el form **
+  const handleOpenModalDetalle = (detalle?: any, ordenId?: number) => {
     if (detalle) {
       setEditingDetalle(detalle)
       setFormDataDetalle({
-        cantidad: detalle.cantidad,
-        idProducto: detalle.idProducto,
+        IdOrdenPedido: detalle.IdOrdenPedido,
+        Cantidad: detalle.Cantidad,
+        IdProducto: detalle.IdProducto,
       })
     } else {
       setEditingDetalle(null)
       setFormDataDetalle({
-        cantidad: 1,
-        idProducto: productos.length > 0 ? productos[0].idProducto : 0,
+        // Utiliza el ordenId si se proporciona, de lo contrario, usa la lógica anterior (primera orden en la lista).
+        IdOrdenPedido: ordenId || (ordenes.length > 0 ? ordenes[0].idOrdenPedido : 0),
+        Cantidad: 1,
+        IdProducto: productos.length > 0 ? productos[0].idProducto : 0,
       })
     }
     setFormErrorDetalle("")
     setShowModalDetalle(true)
-  }
-
-  const handleCloseModalDetalle = () => {
-    setShowModalDetalle(false)
-    setEditingDetalle(null)
-    setFormErrorDetalle("")
   }
 
   const handleSubmitDetalle = async (e: React.FormEvent) => {
@@ -372,36 +424,20 @@ const ProveedoresOrdenesModule = () => {
 
     try {
       if (editingDetalle) {
-        await updateDetalle(editingDetalle.idDetalleOrdenPedido, formDataDetalle)
+        await updateDetalle(editingDetalle.IdDetalleOrdenPedido, {
+          Cantidad: formDataDetalle.Cantidad,
+          IdProducto: formDataDetalle.IdProducto,
+        })
       } else {
         await createDetalle(formDataDetalle)
       }
+      
+      await fetchOrdenPedidos()
       handleCloseModalDetalle()
     } catch (err: any) {
       setFormErrorDetalle(err.message)
     }
   }
-
-  const handleDeleteDetalle = (id: number) => {
-    setConfirmModal({
-      isOpen: true,
-      title: "¿Eliminar Detalle?",
-      message: "Esta acción no se puede deshacer. ¿Desea continuar?",
-      type: "danger",
-      onConfirm: async () => {
-        try {
-          await deleteDetalle(id)
-        } catch (err: any) {
-          alert(err.message)
-        }
-      },
-    })
-  }
-
-  // Filtrar detalles
-  const detallesFiltrados = detalles.filter((d) =>
-    d.nombreProducto.toLowerCase().includes(searchDetalles.toLowerCase()),
-  )
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -477,7 +513,6 @@ const ProveedoresOrdenesModule = () => {
                       placeholder="Buscar por nombre, cédula o teléfono..."
                       value={searchProveedores}
                       onChange={(e) => setSearchProveedores(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && handleBuscarProveedores()}
                       className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     />
                   </div>
@@ -493,7 +528,6 @@ const ProveedoresOrdenesModule = () => {
                     <option value="false">Inactivos</option>
                   </select>
                   <button
-                    onClick={handleBuscarProveedores}
                     className="md:col-span-3 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-200 transition font-medium"
                   >
                     <Filter size={18} />
@@ -514,7 +548,7 @@ const ProveedoresOrdenesModule = () => {
                     <p className="mt-4 text-gray-600 text-sm">Cargando proveedores...</p>
                   </div>
                 ) : (
-                  <>
+                  
                     <div className="overflow-x-auto rounded-lg border border-gray-200">
                       <table className="w-full">
                         <thead className="bg-gray-50">
@@ -537,7 +571,7 @@ const ProveedoresOrdenesModule = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {proveedores.map((proveedor) => (
+                          {proveedores.map((proveedor : VistaProveedor) => (
                             <tr key={proveedor.idProveedor} className="hover:bg-gray-50 transition">
                               <td className="px-4 py-3 text-sm text-gray-700 font-medium">
                                 {formatCedulaJuridica(proveedor.cedulaJuridica)}
@@ -547,10 +581,10 @@ const ProveedoresOrdenesModule = () => {
                               <td className="px-4 py-3 text-sm">
                                 <span
                                   className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                    proveedor.estado ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                    proveedor.estado === "Activo" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
                                   }`}
                                 >
-                                  {proveedor.estado ? "Activo" : "Inactivo"}
+                                  {proveedor.estado}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm">
@@ -565,13 +599,13 @@ const ProveedoresOrdenesModule = () => {
                                   <button
                                     onClick={() => handleToggleEstadoProveedor(proveedor)}
                                     className={`p-1.5 rounded-lg transition ${
-                                      proveedor.estado
+                                      proveedor.estado === "Activo"
                                         ? "text-red-600 hover:text-red-800 hover:bg-red-50"
                                         : "text-green-600 hover:text-green-800 hover:bg-green-50"
                                     }`}
-                                    title={proveedor.estado ? "Desactivar" : "Activar"}
+                                    title={proveedor.estado === "Activo" ? "Desactivar" : "Activar"}
                                   >
-                                    {proveedor.estado ? <XCircle size={16} /> : <CheckCircle size={16} />}
+                                    {proveedor.estado === "Activo" ? <XCircle size={16} /> : <CheckCircle size={16} />}
                                   </button>
                                 </div>
                               </td>
@@ -586,32 +620,7 @@ const ProveedoresOrdenesModule = () => {
                         </div>
                       )}
                     </div>
-
-                    {/* Paginación */}
-                    {totalPagesProveedores > 1 && (
-                      <div className="flex items-center justify-between mt-4">
-                        <p className="text-sm text-gray-600">
-                          Página {pageProveedores} de {totalPagesProveedores}
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handlePaginacionProveedores(pageProveedores - 1)}
-                            disabled={pageProveedores === 1}
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <ChevronLeft size={18} />
-                          </button>
-                          <button
-                            onClick={() => handlePaginacionProveedores(pageProveedores + 1)}
-                            disabled={pageProveedores === totalPagesProveedores}
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <ChevronRight size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
+           
                 )}
               </>
             )}
@@ -619,6 +628,8 @@ const ProveedoresOrdenesModule = () => {
             {/* Órdenes Tab */}
             {activeTab === "ordenes" && (
               <>
+              {console.log("Órdenes Cargadas:", ordenes)}
+              {console.log("Pestaña Activa:", activeTab)}
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-800">Órdenes de Pedido</h2>
@@ -642,7 +653,6 @@ const ProveedoresOrdenesModule = () => {
                       placeholder="Buscar por número o proveedor..."
                       value={searchOrdenes}
                       onChange={(e) => setSearchOrdenes(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && handleBuscarOrdenes()}
                       className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     />
                   </div>
@@ -672,7 +682,6 @@ const ProveedoresOrdenesModule = () => {
                     />
                   </div>
                   <button
-                    onClick={handleBuscarOrdenes}
                     className="md:col-span-4 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-200 transition font-medium"
                   >
                     <Filter size={18} />
@@ -693,7 +702,7 @@ const ProveedoresOrdenesModule = () => {
                     <p className="mt-4 text-gray-600 text-sm">Cargando órdenes...</p>
                   </div>
                 ) : (
-                  <>
+                  
                     <div className="overflow-x-auto rounded-lg border border-gray-200">
                       <table className="w-full">
                         <thead className="bg-gray-50">
@@ -708,7 +717,10 @@ const ProveedoresOrdenesModule = () => {
                               Proveedor
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              Cédula
+                              Subtotal
+                            </th>
+                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                              Total
                             </th>
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                               Estado Pago
@@ -719,38 +731,48 @@ const ProveedoresOrdenesModule = () => {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {ordenes.map((orden) => (
+                          {ordenes.map((orden: VistaOrdenPedido) => (
                             <tr key={orden.idOrdenPedido} className="hover:bg-gray-50 transition">
                               <td className="px-4 py-3 text-sm text-gray-700 font-bold">#{orden.numeroOrden}</td>
                               <td className="px-4 py-3 text-sm text-gray-600">
                                 <div className="flex items-center gap-2">
                                   <Calendar size={14} className="text-gray-400" />
-                                  {new Date(orden.fecha).toLocaleDateString("es-ES")}
+                                  {new Date(orden.fechaEmision).toLocaleDateString("es-ES")}
                                 </div>
                               </td>
-                              <td className="px-4 py-3 text-sm text-gray-900 font-medium">{orden.nombreProveedor}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{formatCedulaJuridica(orden.cedulaJuridica)}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 font-medium">{orden.proveedor?.nombre || 'Sin proveedor'}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">₡{orden.subtotal ? orden.subtotal.toFixed(2) : '0.00'}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 font-semibold">₡{orden.montoTotal ? orden.montoTotal.toFixed(2) : '0.00'}</td>
                               <td className="px-4 py-3 text-sm">
                                 <span
                                   className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                    orden.estadoDePago ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                                    orden.estadoPago === "Pagado" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
                                   }`}
                                 >
-                                  {orden.estadoDePago ? "Pagado" : "Pendiente"}
+                                  {orden.estadoPago}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-sm">
-                                <button
-                                  onClick={() => handleCambiarEstadoPago(orden)}
-                                  className={`p-1.5 rounded-lg transition ${
-                                    orden.estadoDePago
-                                      ? "text-amber-600 hover:text-amber-800 hover:bg-amber-50"
-                                      : "text-green-600 hover:text-green-800 hover:bg-green-50"
-                                  }`}
-                                  title={orden.estadoDePago ? "Marcar como pendiente" : "Marcar como pagado"}
-                                >
-                                  {orden.estadoDePago ? <XCircle size={16} /> : <CheckCircle size={16} />}
-                                </button>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleViewOrder(orden)}
+                                    className="text-blue-600 hover:text-blue-800 p-1.5 hover:bg-blue-50 rounded-lg transition"
+                                    title="Ver detalles"
+                                  >
+                                    <Eye size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleCambiarEstadoPago(orden)}
+                                    className={`p-1.5 rounded-lg transition ${
+                                      orden.estadoPago === "Pagado"
+                                        ? "text-amber-600 hover:text-amber-800 hover:bg-amber-50"
+                                        : "text-green-600 hover:text-green-800 hover:bg-green-50"
+                                    }`}
+                                    title={orden.estadoPago === "Pagado" ? "Marcar como pendiente" : "Marcar como pagado"}
+                                  >
+                                    {orden.estadoPago === "Pagado" ? <XCircle size={16} /> : <CheckCircle size={16} />}
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -763,32 +785,7 @@ const ProveedoresOrdenesModule = () => {
                         </div>
                       )}
                     </div>
-
-                    {/* Paginación */}
-                    {totalPagesOrdenes > 1 && (
-                      <div className="flex items-center justify-between mt-4">
-                        <p className="text-sm text-gray-600">
-                          Página {pageOrdenes} de {totalPagesOrdenes}
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handlePaginacionOrdenes(pageOrdenes - 1)}
-                            disabled={pageOrdenes === 1}
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <ChevronLeft size={18} />
-                          </button>
-                          <button
-                            onClick={() => handlePaginacionOrdenes(pageOrdenes + 1)}
-                            disabled={pageOrdenes === totalPagesOrdenes}
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <ChevronRight size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
+                
                 )}
               </>
             )}
@@ -804,7 +801,7 @@ const ProveedoresOrdenesModule = () => {
                   <button
                     onClick={() => handleOpenModalDetalle()}
                     className="flex items-center gap-2 bg-[#4a9d9d] text-white px-4 py-2.5 rounded-lg hover:bg-[#5aadad] transition shadow-sm font-medium"
-                    disabled={productos.length === 0}
+                    disabled={productos.length === 0 || ordenes.length === 0}
                   >
                     <Plus size={18} />
                     Agregar Producto
@@ -815,6 +812,13 @@ const ProveedoresOrdenesModule = () => {
                   <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
                     <AlertCircle size={20} />
                     <span className="text-sm">Debe crear productos antes de agregar detalles</span>
+                  </div>
+                )}
+
+                {ordenes.length === 0 && productos.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
+                    <AlertCircle size={20} />
+                    <span className="text-sm">Debe crear órdenes de pedido antes de agregar detalles</span>
                   </div>
                 )}
 
@@ -876,62 +880,13 @@ const ProveedoresOrdenesModule = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {detallesFiltrados.map((detalle) => (
-                          <tr key={detalle.idDetalleOrdenPedido} className="hover:bg-gray-50 transition">
-                            <td className="px-4 py-3 text-sm text-gray-600">{detalle.idDetalleOrdenPedido}</td>
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900">{detalle.nombreProducto}</td>
-                            <td className="px-4 py-3 text-sm text-gray-700">
-                              <span className="inline-flex px-2 py-1 bg-[#4a9d9d]/10 text-[#4a9d9d] rounded-md text-xs font-medium">
-                                {detalle.cantidad}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-700 font-medium">₡{detalle.monto.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-gray-600">₡{detalle.impuesto.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-gray-600">₡{detalle.descuento.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900 font-semibold">
-                              ₡{detalle.subtotal.toFixed(2)}
-                            </td>
-                            <td className="px-4 py-3 text-sm">
-                              <span
-                                className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                                  detalle.stock > 10
-                                    ? "bg-green-100 text-green-700"
-                                    : detalle.stock > 0
-                                      ? "bg-amber-100 text-amber-700"
-                                      : "bg-red-100 text-red-700"
-                                }`}
-                              >
-                                {detalle.stock}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-sm">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => handleOpenModalDetalle(detalle)}
-                                  className="text-[#4a9d9d] hover:text-[#5aadad] p-1.5 hover:bg-[#4a9d9d]/10 rounded-lg transition"
-                                  title="Editar"
-                                >
-                                  <Edit2 size={16} />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteDetalle(detalle.idDetalleOrdenPedido)}
-                                  className="text-red-600 hover:text-red-800 p-1.5 hover:bg-red-50 rounded-lg transition"
-                                  title="Eliminar"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                        {/* No hay endpoint para obtener detalles */}
                       </tbody>
                     </table>
-                    {detallesFiltrados.length === 0 && (
-                      <div className="text-center py-12 text-gray-500">
-                        <ShoppingCart size={48} className="mx-auto mb-3 text-gray-300" />
-                        <p className="text-sm">No se encontraron detalles de orden</p>
-                      </div>
-                    )}
+                    <div className="text-center py-12 text-gray-500">
+                      <ShoppingCart size={48} className="mx-auto mb-3 text-gray-300" />
+                      <p className="text-sm">No hay endpoint disponible para listar detalles de orden</p>
+                    </div>
                   </div>
                 )}
               </>
@@ -1052,38 +1007,9 @@ const ProveedoresOrdenesModule = () => {
                     required
                     min="1"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Proveedor *</label>
-                  <select
-                    value={formDataOrden.cedulaJuridica}
-                    onChange={(e) => setFormDataOrden({ ...formDataOrden, cedulaJuridica: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                    required
-                  >
-                    <option value="">Seleccione un proveedor</option>
-                    {proveedores
-                      .filter((p) => p.estado)
-                      .map((proveedor) => (
-                        <option key={proveedor.idProveedor} value={proveedor.cedulaJuridica}>
-                          {proveedor.nombre} - {formatCedulaJuridica(proveedor.cedulaJuridica)}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="estadoDePago"
-                    checked={formDataOrden.estadoDePago}
-                    onChange={(e) => setFormDataOrden({ ...formDataOrden, estadoDePago: e.target.checked })}
-                    className="w-4 h-4 text-[#4a9d9d] border-gray-300 rounded focus:ring-2 focus:ring-[#4a9d9d]"
-                  />
-                  <label htmlFor="estadoDePago" className="text-sm font-medium text-gray-700">
-                    Marcar como Pagado
-                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    La orden se creará sin proveedor y sin pago. El siguiente paso será agregar productos.
+                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-4">
@@ -1130,11 +1056,32 @@ const ProveedoresOrdenesModule = () => {
 
               <form onSubmit={handleSubmitDetalle} className="space-y-4">
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Orden de Pedido *</label>
+                  <select
+                    value={formDataDetalle.IdOrdenPedido}
+                    onChange={(e) =>
+                      setFormDataDetalle({ ...formDataDetalle, IdOrdenPedido: Number.parseInt(e.target.value) })
+                    }
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                    required
+                    // ** MODIFICACIÓN 3: Deshabilitar si se está creando un detalle en una orden recién creada **
+                    disabled={!!editingDetalle || (formDataDetalle.IdOrdenPedido !== 0 && !editingDetalle)}
+                  >
+                    <option value={0}>Seleccione una orden</option>
+                    {ordenes.map((orden: VistaOrdenPedido) => (
+                      <option key={orden.idOrdenPedido} value={orden.idOrdenPedido}>
+                        Orden #{orden.numeroOrden} - {orden.proveedor?.nombre || 'Sin proveedor'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Producto *</label>
                   <select
-                    value={formDataDetalle.idProducto}
+                    value={formDataDetalle.IdProducto}
                     onChange={(e) =>
-                      setFormDataDetalle({ ...formDataDetalle, idProducto: Number.parseInt(e.target.value) })
+                      setFormDataDetalle({ ...formDataDetalle, IdProducto: Number.parseInt(e.target.value) })
                     }
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
@@ -1152,9 +1099,9 @@ const ProveedoresOrdenesModule = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Cantidad *</label>
                   <input
                     type="number"
-                    value={formDataDetalle.cantidad}
+                    value={formDataDetalle.Cantidad}
                     onChange={(e) =>
-                      setFormDataDetalle({ ...formDataDetalle, cantidad: Number.parseInt(e.target.value) || 1 })
+                      setFormDataDetalle({ ...formDataDetalle, Cantidad: Number.parseInt(e.target.value) || 1 })
                     }
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
@@ -1162,11 +1109,11 @@ const ProveedoresOrdenesModule = () => {
                   />
                 </div>
 
-                {formDataDetalle.idProducto > 0 && (
+                {formDataDetalle.IdProducto > 0 && (
                   <div className="bg-[#4a9d9d]/10 border border-[#4a9d9d]/20 rounded-lg p-4">
                     <p className="text-sm font-medium text-[#4a9d9d] mb-2">Información del Producto</p>
                     {(() => {
-                      const producto = productos.find((p) => p.idProducto === formDataDetalle.idProducto)
+                      const producto = productos.find((p) => p.idProducto === formDataDetalle.IdProducto)
                       if (producto) {
                         return (
                           <div className="space-y-1 text-sm text-[#4a9d9d]">
@@ -1178,7 +1125,7 @@ const ProveedoresOrdenesModule = () => {
                             </p>
                             <p>
                               <span className="font-medium">Subtotal:</span> ₡
-                              {(producto.monto * formDataDetalle.cantidad).toFixed(2)}
+                              {(producto.monto * formDataDetalle.Cantidad).toFixed(2)}
                             </p>
                           </div>
                         )
@@ -1204,6 +1151,412 @@ const ProveedoresOrdenesModule = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Wizard Orden */}
+      {showWizardModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-xs bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Crear Orden de Pedido</h2>
+              <button onClick={handleCloseWizardModal} className="text-gray-400 hover:text-gray-600 transition" disabled={wizardStep < 3}>
+                <X size={22} />
+              </button>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="px-6 py-4 bg-gray-50">
+              <div className="flex items-center justify-between">
+                <div className={`flex items-center ${wizardStep >= 1 ? 'text-[#4a9d9d]' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${wizardStep >= 1 ? 'bg-[#4a9d9d] text-white' : 'bg-gray-200'}`}>1</div>
+                  <span className="ml-2 text-sm font-medium">Crear Orden</span>
+                </div>
+                <div className={`flex-1 h-1 mx-4 ${wizardStep >= 2 ? 'bg-[#4a9d9d]' : 'bg-gray-200'}`}></div>
+                <div className={`flex items-center ${wizardStep >= 2 ? 'text-[#4a9d9d]' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${wizardStep >= 2 ? 'bg-[#4a9d9d] text-white' : 'bg-gray-200'}`}>2</div>
+                  <span className="ml-2 text-sm font-medium">Agregar Productos</span>
+                </div>
+                <div className={`flex-1 h-1 mx-4 ${wizardStep >= 3 ? 'bg-[#4a9d9d]' : 'bg-gray-200'}`}></div>
+                <div className={`flex items-center ${wizardStep >= 3 ? 'text-[#4a9d9d]' : 'text-gray-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${wizardStep >= 3 ? 'bg-[#4a9d9d] text-white' : 'bg-gray-200'}`}>3</div>
+                  <span className="ml-2 text-sm font-medium">Finalizar</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {wizardError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
+                  <AlertCircle size={18} />
+                  <span className="text-sm">{wizardError}</span>
+                </div>
+              )}
+
+              {/* Step 1: Crear Orden */}
+              {wizardStep === 1 && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Número de Orden *</label>
+                    <input
+                      type="number"
+                      value={wizardOrder.numeroOrden || ""}
+                      onChange={(e) => setWizardOrder({ ...wizardOrder, numeroOrden: Number.parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                      required
+                      min="1"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Ingrese el número único para esta orden de pedido.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Agregar Detalles */}
+              {wizardStep === 2 && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium text-gray-800">Productos en la Orden</h3>
+                    <button
+                      type="button"
+                      onClick={handleAddWizardDetail}
+                      disabled={wizardLoading}
+                      className="flex items-center gap-2 bg-[#4a9d9d] text-white px-3 py-1.5 rounded-lg hover:bg-[#5aadad] transition text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus size={16} />
+                      Agregar Producto
+                    </button>
+                  </div>
+
+                  {wizardDetails.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <ShoppingCart size={48} className="mx-auto mb-3 text-gray-300" />
+                      <p className="text-sm">No hay productos agregados. Haga clic en "Agregar Producto" para comenzar.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {wizardDetails.map((detail, index) => (
+                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                          <div className="flex justify-between items-start mb-3">
+                            <h4 className="text-sm font-medium text-gray-700">Producto {index + 1}</h4>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveWizardDetail(index)}
+                              className="text-red-600 hover:text-red-800 p-1"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Producto</label>
+                              <select
+                                value={detail.IdProducto}
+                                onChange={(e) => handleUpdateWizardDetail(index, 'IdProducto', Number.parseInt(e.target.value))}
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                              >
+                                <option value={0}>Seleccione un producto</option>
+                                {productos.map((producto) => (
+                                  <option key={producto.idProducto} value={producto.idProducto}>
+                                    {producto.nombre} - ₡{producto.monto.toFixed(2)}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad</label>
+                              <input
+                                type="number"
+                                value={detail.Cantidad}
+                                onChange={(e) => handleUpdateWizardDetail(index, 'Cantidad', Number.parseInt(e.target.value) || 1)}
+                                className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                                min="1"
+                              />
+                            </div>
+                          </div>
+                          {detail.IdProducto > 0 && (
+                            <div className="mt-3 text-xs text-[#4a9d9d]">
+                              {(() => {
+                                const producto = productos.find((p) => p.idProducto === detail.IdProducto)
+                                if (producto) {
+                                  return (
+                                    <p>
+                                      <span className="font-medium">Subtotal:</span> ₡{(producto.monto * detail.Cantidad).toFixed(2)}
+                                    </p>
+                                  )
+                                }
+                                return null
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 3: Finalizar */}
+              {wizardStep === 3 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium text-gray-800">Finalizar Orden</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Proveedor (Opcional)</label>
+                      <select
+                        value={wizardFinal.idProveedor}
+                        onChange={(e) => setWizardFinal({ ...wizardFinal, idProveedor: Number.parseInt(e.target.value) })}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                      >
+                        <option value={0}>Sin proveedor</option>
+                        {proveedores.map((proveedor: VistaProveedor) => (
+                          <option key={proveedor.idProveedor} value={proveedor.idProveedor}>
+                            {proveedor.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Estado de Pago</label>
+                      <select
+                        value={wizardFinal.estadoPago.toString()}
+                        onChange={(e) => setWizardFinal({ ...wizardFinal, estadoPago: e.target.value === 'true' })}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                      >
+                        <option value="false">Pendiente</option>
+                        <option value="true">Pagado</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Monto Cancelado (Opcional)</label>
+                      <input
+                        type="number"
+                        value={wizardFinal.montoCancelado || ""}
+                        onChange={(e) => setWizardFinal({ ...wizardFinal, montoCancelado: Number.parseFloat(e.target.value) || 0 })}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+                  <div className="bg-[#4a9d9d]/10 border border-[#4a9d9d]/20 rounded-lg p-4">
+                    <h4 className="text-sm font-medium text-[#4a9d9d] mb-2">Resumen de la Orden</h4>
+                    <div className="space-y-1 text-sm text-[#4a9d9d]">
+                      <p><span className="font-medium">Número de Orden:</span> #{wizardOrder.numeroOrden}</p>
+                      <p><span className="font-medium">Productos:</span> {wizardDetails.length}</p>
+                      <p><span className="font-medium">Proveedor:</span> {wizardFinal.idProveedor > 0 ? proveedores.find((p: VistaProveedor) => p.idProveedor === wizardFinal.idProveedor)?.nombre : 'Sin asignar'}</p>
+                      <p><span className="font-medium">Estado de Pago:</span> {wizardFinal.estadoPago ? 'Pagado' : 'Pendiente'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between pt-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={handleWizardBack}
+                  disabled={wizardStep === 1}
+                  className="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <div className="flex gap-3">
+                  {wizardStep < 3 ? (
+                    <button
+                      type="button"
+                      onClick={handleWizardNext}
+                      disabled={wizardStep === 1 && wizardOrder.numeroOrden === 0}
+                      className="px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Siguiente
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleWizardFinish}
+                      className="px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition"
+                    >
+                      Finalizar Orden
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Ver Orden */}
+      {showViewModal && selectedOrder && (
+        <div className="fixed inset-0 bg-opacity-10 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Detalles de la Orden #{selectedOrder.numeroOrden}</h2>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-lg transition"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Información General */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Información General</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Número de Orden</label>
+                      <p className="text-sm text-gray-900 font-medium">#{selectedOrder.numeroOrden}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Fecha de Emisión</label>
+                      <p className="text-sm text-gray-900">{new Date(selectedOrder.fechaEmision).toLocaleString("es-ES")}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Estado de Pago</label>
+                      <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                        selectedOrder.estadoPago === "Pagado" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                      }`}>
+                        {selectedOrder.estadoPago}
+                      </span>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Monto Cancelado</label>
+                      <p className="text-sm text-gray-900">₡{selectedOrder.montoCancelado?.toFixed(2) || '0.00'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Información Financiera */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Información Financiera</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Subtotal</label>
+                      <p className="text-lg font-semibold text-gray-900">₡{selectedOrder.subtotal?.toFixed(2) || '0.00'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Impuestos</label>
+                      <p className="text-lg font-semibold text-gray-900">₡{selectedOrder.impuesto?.toFixed(2) || '0.00'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">Descuento</label>
+                      <p className="text-lg font-semibold text-gray-900">₡{selectedOrder.descuento?.toFixed(2) || '0.00'}</p>
+                    </div>
+                    <div className="md:col-span-3">
+                      <label className="block text-sm font-medium text-gray-600">Monto Total</label>
+                      <p className="text-2xl font-bold text-[#4a9d9d]">₡{selectedOrder.montoTotal?.toFixed(2) || '0.00'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Información del Proveedor */}
+                {selectedOrder.proveedor && (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3">Proveedor</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600">Nombre</label>
+                        <p className="text-sm text-gray-900 font-medium">{selectedOrder.proveedor.nombre}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600">Cédula Jurídica</label>
+                        <p className="text-sm text-gray-900">{selectedOrder.proveedor.cedulaJuridica}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600">Teléfono</label>
+                        <p className="text-sm text-gray-900">{selectedOrder.proveedor.telefono}</p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600">Estado</label>
+                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                          selectedOrder.proveedor.estado ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                        }`}>
+                          {selectedOrder.proveedor.estado ? 'Activo' : 'Inactivo'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Detalles de Productos */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Productos en la Orden</h3>
+                  {selectedOrder.detalles && selectedOrder.detalles.length > 0 ? (
+                    <div className="space-y-3">
+                      {selectedOrder.detalles.map((detalle, index) => (
+                        <div key={detalle.IdDetalleOrdenPedido || index} className="bg-white rounded-lg p-4 border border-gray-200">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h4 className="font-medium text-gray-900">{detalle.producto?.nombre || 'Producto no disponible'}</h4>
+                              <p className="text-sm text-gray-600">{detalle.producto?.descripcion || 'Sin descripción'}</p>
+                            </div>
+                            <span className="text-sm font-medium text-gray-500">#{index + 1}</span>
+                          </div>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500">Cantidad</label>
+                              <p className="font-medium">{detalle.Cantidad}</p>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500">Precio Unitario</label>
+                              <p className="font-medium">₡{detalle.producto?.monto?.toFixed(2) || '0.00'}</p>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500">Subtotal</label>
+                              <p className="font-medium">₡{detalle.Subtotal?.toFixed(2) || '0.00'}</p>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500">Impuesto</label>
+                              <p className="font-medium">₡{detalle.Impuesto?.toFixed(2) || '0.00'}</p>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500">Descuento</label>
+                              <p className="font-medium">₡{detalle.Descuento?.toFixed(2) || '0.00'}</p>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500">Stock Disponible</label>
+                              <p className="font-medium">{detalle.producto?.stock || 0}</p>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500">Categoría</label>
+                              <p className="font-medium">{detalle.producto?.Categoria?.nombre || 'Sin categoría'}</p>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-500">Estado Producto</label>
+                              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                                detalle.producto?.estado ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                              }`}>
+                                {detalle.producto?.estado ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <ShoppingCart size={48} className="mx-auto mb-3 text-gray-300" />
+                      <p className="text-sm">No hay productos en esta orden</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>
