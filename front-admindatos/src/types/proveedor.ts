@@ -26,3 +26,13 @@ export interface VistaProveedor {
   telefono: string;
   estado: string;
 }
+
+
+export interface CondicionPagoProveedor {
+    idProveedor: number,
+    cedulaJuridica: string,
+    nombre: string,
+    idCondicionesPagoProveedor: number,
+    condicion: string,
+    fecha: string
+  }

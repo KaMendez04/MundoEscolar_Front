@@ -1,10 +1,12 @@
 // hooks/useProveedores.ts
 import { useState, useEffect } from 'react';
-import { proveedorService } from '../services/proveedorService';
+import { proveedorService,condicionsPagoProveedorService } from '../services/proveedorService';
 import type { 
   CreateProveedorDto, 
-  UpdateProveedorDto
+  UpdateProveedorDto,
+  CondicionPagoProveedor
 } from '../types/proveedor';
+
 
 export const useProveedores = () => {
 
@@ -93,5 +95,49 @@ export const useProveedores = () => {
     desactivarProveedor,
     activarProveedor,
     fetchProveedores,
+  };
+};
+
+
+export const useCondicionesPagoProveedor = () =>{
+  const [condicionesPago, setCondicionesPago] = useState<CondicionPagoProveedor | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCondicionesPago = async (idProveedor: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await condicionsPagoProveedorService.obtenerCondicionesPago(idProveedor);
+      setCondicionesPago(response);
+      return response;
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al cargar condiciones de pago');
+      setCondicionesPago(null);
+      console.error('Error fetching condiciones de pago:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const insertarCondicionesPago = async (idProveedor: number, acepta: boolean, condiciones?: string[]) => {
+    try {
+      setError(null);
+      const mensajes = await condicionsPagoProveedorService.crearActualizarCondicionesPago(idProveedor, acepta, condiciones);
+      await fetchCondicionesPago(idProveedor);
+      return mensajes;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Error al insertar condiciones de pago';
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    }
+  };
+
+  return {
+    condicionesPago,
+    loading,
+    error,
+    fetchCondicionesPago,
+    insertarCondicionesPago,
   };
 };

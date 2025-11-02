@@ -8,7 +8,7 @@ export interface Producto {
   descuento: number;
   idCategoria: number;
   estado?: boolean;
-  Categoria?: Categoria;
+  categoria?: Categoria;
 }
 
 export interface CreateProductoDto {

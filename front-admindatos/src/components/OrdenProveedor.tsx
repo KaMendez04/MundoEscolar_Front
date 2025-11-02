@@ -16,7 +16,7 @@ import {
   ShoppingCart,
   Eye,
 } from "lucide-react"
-import { useProveedores } from "../hooks/useProveedores"
+import { useCondicionesPagoProveedor, useProveedores } from "../hooks/useProveedores"
 import { useOrdenPedidos } from "../hooks/useOrdenPedidos"
 import { useDetalleOrdenPedido } from "../hooks/useDetalleOrdenPedido"
 import { useProductos } from "../hooks/useProdutos"
@@ -40,6 +40,27 @@ const formatCedulaJuridica = (cedula: string): string => {
 
 // Modal de Confirmación
 const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "danger" }: any) => {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  const handleConfirm = async () => {
+    setLoading(true)
+    setError("")
+    try {
+      // Timeout de 30 segundos
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Tiempo de espera agotado. Verifique su conexión.")), 30000)
+      })
+      await Promise.race([onConfirm(), timeoutPromise])
+      onClose()
+    } catch (err: any) {
+      console.error("Error en confirmación:", err)
+      setError(err?.message || err?.toString() || "Ocurrió un error inesperado")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -59,23 +80,27 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "dang
             <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
           </div>
           <p className="text-gray-600 mb-6 ml-15">{message}</p>
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
           <div className="flex gap-3">
             <button
               onClick={onClose}
+              disabled={loading}
               className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition"
             >
               Cancelar
             </button>
             <button
-              onClick={() => {
-                onConfirm()
-                onClose()
-              }}
+              onClick={handleConfirm}
+              disabled={loading}
               className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-white transition ${
                 type === "danger" ? "bg-red-600 hover:bg-red-700" : "bg-[#4a9d9d] hover:bg-[#5aadad]"
-              }`}
+              } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
             >
-              Confirmar
+              {loading ? "Confirmando..." : "Confirmar"}
             </button>
           </div>
         </div>
@@ -108,7 +133,7 @@ const ProveedoresOrdenesModule = () => {
   const [formErrorProveedor, setFormErrorProveedor] = useState("")
   const [searchProveedores, setSearchProveedores] = useState("")
   const [filtroEstadoProveedor, setFiltroEstadoProveedor] = useState<boolean | undefined>(undefined)
-
+  const {fetchCondicionesPago, insertarCondicionesPago} = useCondicionesPagoProveedor()
   // Estados Órdenes
   const {
     ordenes,
@@ -134,7 +159,7 @@ const ProveedoresOrdenesModule = () => {
   const [wizardStep, setWizardStep] = useState(1)
   const [wizardOrder, setWizardOrder] = useState<CreateOrdenPedidoDto>({ numeroOrden: 0 })
   const [wizardDetails, setWizardDetails] = useState<CreateDetalleOrdenPedidoDto[]>([])
-  const [wizardFinal, setWizardFinal] = useState({ idProveedor: 0, estadoPago: false, montoCancelado: 0 })
+  const [wizardFinal, setWizardFinal] = useState({ idProveedor: 0, estadoPago: false, montoCancelado: 0, acepta:false })
   const [wizardOrderId, setWizardOrderId] = useState<number | null>(null)
   const [wizardError, setWizardError] = useState("")
   const [wizardLoading, setWizardLoading] = useState(false)
@@ -156,9 +181,9 @@ const ProveedoresOrdenesModule = () => {
   const [showModalDetalle, setShowModalDetalle] = useState(false)
   const [editingDetalle, setEditingDetalle] = useState<any | null>(null)
   const [formDataDetalle, setFormDataDetalle] = useState<CreateDetalleOrdenPedidoDto>({
-    IdOrdenPedido: 0,
-    Cantidad: 1,
-    IdProducto: 0,
+    idOrdenPedido: 0,
+    cantidad: 1,
+    idProducto: 0,
   })
   const [formErrorDetalle, setFormErrorDetalle] = useState("")
   const [searchDetalles, setSearchDetalles] = useState("")
@@ -263,7 +288,7 @@ const ProveedoresOrdenesModule = () => {
     setWizardStep(1)
     setWizardOrder({ numeroOrden: 0 })
     setWizardDetails([])
-    setWizardFinal({ idProveedor: 0, estadoPago: false, montoCancelado: 0 })
+    setWizardFinal({ idProveedor: 0, estadoPago: false, montoCancelado: 0, acepta:false })
     setWizardOrderId(null)
     setWizardError("")
     setShowWizardModal(true)
@@ -286,6 +311,7 @@ const ProveedoresOrdenesModule = () => {
   }
 
   const handleWizardNext = async () => {
+    if (wizardError) return // No proceder si hay un error pendiente
     setWizardLoading(true)
     try {
       if (wizardStep === 1) {
@@ -315,6 +341,7 @@ const ProveedoresOrdenesModule = () => {
   }
 
   const handleWizardFinish = async () => {
+    if (wizardError) return // No proceder si hay un error pendiente
     try {
       setWizardError("")
       if (!wizardOrderId) throw new Error("No hay orden creada")
@@ -327,6 +354,7 @@ const ProveedoresOrdenesModule = () => {
           IdProveedor: wizardFinal.idProveedor,
           MontoCancelado: wizardFinal.montoCancelado,
         })
+        await insertarCondicionesPago(wizardFinal.idProveedor, wizardFinal.acepta)
       }
 
       await fetchOrdenPedidos() // refresh final
@@ -341,7 +369,7 @@ const ProveedoresOrdenesModule = () => {
       setWizardError("Primero debe crear la orden")
       return
     }
-    setWizardDetails([...wizardDetails, { IdOrdenPedido: wizardOrderId, Cantidad: 1, IdProducto: productos.length > 0 ? productos[0].idProducto : 0 }])
+    setWizardDetails([...wizardDetails, { idOrdenPedido: wizardOrderId, cantidad: 1, idProducto: productos.length > 0 ? productos[0].idProducto : 0 }])
   }
 
   const handleUpdateWizardDetail = (index: number, field: string, value: any) => {
@@ -374,17 +402,13 @@ const ProveedoresOrdenesModule = () => {
       message: `¿Está seguro de cambiar el estado de pago de la orden #${orden.numeroOrden}?`,
       type: "success",
       onConfirm: async () => {
-        try {
-          await cambiarEstadoPago({
-            IdOrdenPedido: orden.idOrdenPedido,
-            EstadoPago: orden.estadoPago !== "Pagado",
-            IdProveedor: orden.proveedor?.idProveedor, // Usar el ID del proveedor si existe
-            MontoCancelado: orden.montoCancelado, // Asegúrate de que este campo se maneje correctamente si está en tu DTO
-          })
-          await fetchOrdenPedidos()
-        } catch (err: any) {
-          alert(err.message)
-        }
+        await cambiarEstadoPago({
+          IdOrdenPedido: orden.idOrdenPedido,
+          EstadoPago: orden.estadoPago !== "Pagado",
+          IdProveedor: orden.proveedor?.idProveedor, // Usar el ID del proveedor si existe
+          MontoCancelado: orden.montoCancelado, // Asegúrate de que este campo se maneje correctamente si está en tu DTO
+        })
+        await fetchOrdenPedidos()
       },
     })
   }
@@ -401,17 +425,17 @@ const ProveedoresOrdenesModule = () => {
     if (detalle) {
       setEditingDetalle(detalle)
       setFormDataDetalle({
-        IdOrdenPedido: detalle.IdOrdenPedido,
-        Cantidad: detalle.Cantidad,
-        IdProducto: detalle.IdProducto,
+        idOrdenPedido: detalle.idOrdenPedido,
+        cantidad: detalle.cantidad,
+        idProducto: detalle.idProducto,
       })
     } else {
       setEditingDetalle(null)
       setFormDataDetalle({
         // Utiliza el ordenId si se proporciona, de lo contrario, usa la lógica anterior (primera orden en la lista).
-        IdOrdenPedido: ordenId || (ordenes.length > 0 ? ordenes[0].idOrdenPedido : 0),
-        Cantidad: 1,
-        IdProducto: productos.length > 0 ? productos[0].idProducto : 0,
+        idOrdenPedido: ordenId || (ordenes.length > 0 ? ordenes[0].idOrdenPedido : 0),
+        cantidad: 1,
+        idProducto: productos.length > 0 ? productos[0].idProducto : 0,
       })
     }
     setFormErrorDetalle("")
@@ -424,9 +448,9 @@ const ProveedoresOrdenesModule = () => {
 
     try {
       if (editingDetalle) {
-        await updateDetalle(editingDetalle.IdDetalleOrdenPedido, {
-          Cantidad: formDataDetalle.Cantidad,
-          IdProducto: formDataDetalle.IdProducto,
+        await updateDetalle(editingDetalle.idDetalleOrdenPedido, {
+          cantidad: formDataDetalle.cantidad,
+          idProducto: formDataDetalle.idProducto,
         })
       } else {
         await createDetalle(formDataDetalle)
@@ -1058,14 +1082,14 @@ const ProveedoresOrdenesModule = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Orden de Pedido *</label>
                   <select
-                    value={formDataDetalle.IdOrdenPedido}
+                    value={formDataDetalle.idOrdenPedido}
                     onChange={(e) =>
-                      setFormDataDetalle({ ...formDataDetalle, IdOrdenPedido: Number.parseInt(e.target.value) })
+                      setFormDataDetalle({ ...formDataDetalle, idOrdenPedido: Number.parseInt(e.target.value) })
                     }
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                     // ** MODIFICACIÓN 3: Deshabilitar si se está creando un detalle en una orden recién creada **
-                    disabled={!!editingDetalle || (formDataDetalle.IdOrdenPedido !== 0 && !editingDetalle)}
+                    disabled={!!editingDetalle || (formDataDetalle.idOrdenPedido !== 0 && !editingDetalle)}
                   >
                     <option value={0}>Seleccione una orden</option>
                     {ordenes.map((orden: VistaOrdenPedido) => (
@@ -1079,9 +1103,9 @@ const ProveedoresOrdenesModule = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Producto *</label>
                   <select
-                    value={formDataDetalle.IdProducto}
+                    value={formDataDetalle.idProducto}
                     onChange={(e) =>
-                      setFormDataDetalle({ ...formDataDetalle, IdProducto: Number.parseInt(e.target.value) })
+                      setFormDataDetalle({ ...formDataDetalle,idProducto: Number.parseInt(e.target.value) })
                     }
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
@@ -1099,9 +1123,9 @@ const ProveedoresOrdenesModule = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Cantidad *</label>
                   <input
                     type="number"
-                    value={formDataDetalle.Cantidad}
+                    value={formDataDetalle.cantidad}
                     onChange={(e) =>
-                      setFormDataDetalle({ ...formDataDetalle, Cantidad: Number.parseInt(e.target.value) || 1 })
+                      setFormDataDetalle({ ...formDataDetalle, cantidad: Number.parseInt(e.target.value) || 1 })
                     }
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
@@ -1109,11 +1133,11 @@ const ProveedoresOrdenesModule = () => {
                   />
                 </div>
 
-                {formDataDetalle.IdProducto > 0 && (
+                {formDataDetalle.idProducto > 0 && (
                   <div className="bg-[#4a9d9d]/10 border border-[#4a9d9d]/20 rounded-lg p-4">
                     <p className="text-sm font-medium text-[#4a9d9d] mb-2">Información del Producto</p>
                     {(() => {
-                      const producto = productos.find((p) => p.idProducto === formDataDetalle.IdProducto)
+                      const producto = productos.find((p) => p.idProducto === formDataDetalle.idProducto)
                       if (producto) {
                         return (
                           <div className="space-y-1 text-sm text-[#4a9d9d]">
@@ -1125,7 +1149,7 @@ const ProveedoresOrdenesModule = () => {
                             </p>
                             <p>
                               <span className="font-medium">Subtotal:</span> ₡
-                              {(producto.monto * formDataDetalle.Cantidad).toFixed(2)}
+                              {(producto.monto * formDataDetalle.cantidad).toFixed(2)}
                             </p>
                           </div>
                         )
@@ -1254,7 +1278,7 @@ const ProveedoresOrdenesModule = () => {
                             <div>
                               <label className="block text-xs font-medium text-gray-600 mb-1">Producto</label>
                               <select
-                                value={detail.IdProducto}
+                                value={detail.idProducto}
                                 onChange={(e) => handleUpdateWizardDetail(index, 'IdProducto', Number.parseInt(e.target.value))}
                                 className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                               >
@@ -1270,21 +1294,21 @@ const ProveedoresOrdenesModule = () => {
                               <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad</label>
                               <input
                                 type="number"
-                                value={detail.Cantidad}
-                                onChange={(e) => handleUpdateWizardDetail(index, 'Cantidad', Number.parseInt(e.target.value) || 1)}
+                                value={detail.cantidad}
+                                onChange={(e) => handleUpdateWizardDetail(index, 'cantidad', Number.parseInt(e.target.value) || 1)}
                                 className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                                 min="1"
                               />
                             </div>
                           </div>
-                          {detail.IdProducto > 0 && (
+                          {detail.idProducto > 0 && (
                             <div className="mt-3 text-xs text-[#4a9d9d]">
                               {(() => {
-                                const producto = productos.find((p) => p.idProducto === detail.IdProducto)
+                                const producto = productos.find((p) => p.idProducto === detail.idProducto)
                                 if (producto) {
                                   return (
                                     <p>
-                                      <span className="font-medium">Subtotal:</span> ₡{(producto.monto * detail.Cantidad).toFixed(2)}
+                                      <span className="font-medium">Subtotal:</span> ₡{(producto.monto * detail.cantidad).toFixed(2)}
                                     </p>
                                   )
                                 }
@@ -1341,6 +1365,15 @@ const ProveedoresOrdenesModule = () => {
                         step="0.01"
                       />
                     </div>
+                    <div className="md:col-span-2 flex items-center gap-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Aceptar Términos y Condiciones</label>
+                      <input
+                        type="checkbox"
+                        checked={wizardFinal.acepta}
+                        onChange={(e) => setWizardFinal({ ...wizardFinal, acepta: e.target.checked })}
+                        className="h-4 w-4 border border-gray-300 rounded focus:ring-2 focus:ring-[#4a9d9d] bg-white"
+                      />
+                    </div>
                   </div>
                   <div className="bg-[#4a9d9d]/10 border border-[#4a9d9d]/20 rounded-lg p-4">
                     <h4 className="text-sm font-medium text-[#4a9d9d] mb-2">Resumen de la Orden</h4>
@@ -1349,6 +1382,7 @@ const ProveedoresOrdenesModule = () => {
                       <p><span className="font-medium">Productos:</span> {wizardDetails.length}</p>
                       <p><span className="font-medium">Proveedor:</span> {wizardFinal.idProveedor > 0 ? proveedores.find((p: VistaProveedor) => p.idProveedor === wizardFinal.idProveedor)?.nombre : 'Sin asignar'}</p>
                       <p><span className="font-medium">Estado de Pago:</span> {wizardFinal.estadoPago ? 'Pagado' : 'Pendiente'}</p>
+
                     </div>
                   </div>
                 </div>
@@ -1491,7 +1525,7 @@ const ProveedoresOrdenesModule = () => {
                   {selectedOrder.detalles && selectedOrder.detalles.length > 0 ? (
                     <div className="space-y-3">
                       {selectedOrder.detalles.map((detalle, index) => (
-                        <div key={detalle.IdDetalleOrdenPedido || index} className="bg-white rounded-lg p-4 border border-gray-200">
+                        <div key={detalle.idDetalleOrdenPedido || index} className="bg-white rounded-lg p-4 border border-gray-200">
                           <div className="flex justify-between items-start mb-3">
                             <div>
                               <h4 className="font-medium text-gray-900">{detalle.producto?.nombre || 'Producto no disponible'}</h4>
@@ -1502,7 +1536,7 @@ const ProveedoresOrdenesModule = () => {
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                             <div>
                               <label className="block text-xs font-medium text-gray-500">Cantidad</label>
-                              <p className="font-medium">{detalle.Cantidad}</p>
+                              <p className="font-medium">{detalle.cantidad}</p>
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-500">Precio Unitario</label>
@@ -1510,15 +1544,15 @@ const ProveedoresOrdenesModule = () => {
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-500">Subtotal</label>
-                              <p className="font-medium">₡{detalle.Subtotal?.toFixed(2) || '0.00'}</p>
+                              <p className="font-medium">₡{detalle.subtotal?.toFixed(2) || '0.00'}</p>
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-500">Impuesto</label>
-                              <p className="font-medium">₡{detalle.Impuesto?.toFixed(2) || '0.00'}</p>
+                              <p className="font-medium">₡{detalle.impuesto?.toFixed(2) || '0.00'}</p>
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-500">Descuento</label>
-                              <p className="font-medium">₡{detalle.Descuento?.toFixed(2) || '0.00'}</p>
+                              <p className="font-medium">₡{detalle.descuento?.toFixed(2) || '0.00'}</p>
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-500">Stock Disponible</label>
@@ -1526,7 +1560,7 @@ const ProveedoresOrdenesModule = () => {
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-500">Categoría</label>
-                              <p className="font-medium">{detalle.producto?.Categoria?.nombre || 'Sin categoría'}</p>
+                              <p className="font-medium">{detalle.producto?.categoria?.nombre || 'Sin categoría'}</p>
                             </div>
                             <div>
                               <label className="block text-xs font-medium text-gray-500">Estado Producto</label>
