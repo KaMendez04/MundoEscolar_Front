@@ -24,6 +24,61 @@ import type { Proveedor, CreateProveedorDto, VistaProveedor } from "../types/pro
 import type { CreateOrdenPedidoDto, VistaOrdenPedido } from "../types/ordenPedido"
 import type { CreateDetalleOrdenPedidoDto } from "../types/detalleOrdenPedido"
 
+// Función para extraer mensaje de error de Axios
+const getErrorMessage = (error: any): string => {
+  // Verifica si es un error de Axios
+  if (error?.response) {
+    // Intenta obtener el mensaje del backend
+    const data = error.response?.data
+    
+    // Si hay un array de mensajes (formato específico del backend)
+    if (data?.mensajes && Array.isArray(data.mensajes)) {
+      return data.mensajes.join(', ')
+    }
+    
+    // Intentar otras propiedades comunes
+    const backendMessage = data?.message || 
+                          data?.error ||
+                          data?.mensaje ||
+                          data
+    
+    if (typeof backendMessage === 'string') {
+      return backendMessage
+    }
+    
+    // Si hay un array de errores
+    if (Array.isArray(backendMessage)) {
+      return backendMessage.join(', ')
+    }
+    
+    // Si backendMessage es un objeto, intentar extraer información útil
+    if (typeof backendMessage === 'object' && backendMessage !== null) {
+      // Intentar obtener cualquier propiedad de mensaje del objeto
+      const possibleMessage = backendMessage.message || 
+                             backendMessage.error || 
+                             backendMessage.mensaje ||
+                             JSON.stringify(backendMessage)
+      return typeof possibleMessage === 'string' ? possibleMessage : JSON.stringify(possibleMessage)
+    }
+    
+    // Mensajes por código de estado solo si no hay mensaje del backend
+    if (error.response?.status === 404) {
+      return 'Recurso no encontrado.'
+    }
+    if (error.response?.status === 500) {
+      return 'Error interno del servidor. Intente nuevamente.'
+    }
+    
+    return error.message || 'Error de conexión con el servidor'
+  }
+  
+  if (error instanceof Error) {
+    return error.message
+  }
+  
+  return String(error) || 'Ocurrió un error inesperado'
+}
+
 // Función para formatear cédula jurídica
 const formatCedulaJuridica = (cedula: string): string => {
   // Eliminar cualquier caracter que no sea número
@@ -47,16 +102,13 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "dang
     setLoading(true)
     setError("")
     try {
-      // Timeout de 30 segundos
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Tiempo de espera agotado. Verifique su conexión.")), 30000)
-      })
-      await Promise.race([onConfirm(), timeoutPromise])
+      await onConfirm()
+      setLoading(false)
       onClose()
     } catch (err: any) {
       console.error("Error en confirmación:", err)
-      setError(err?.message || err?.toString() || "Ocurrió un error inesperado")
-    } finally {
+      const errorMsg = getErrorMessage(err)
+      setError(errorMsg)
       setLoading(false)
     }
   }
@@ -82,25 +134,28 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "dang
           <p className="text-gray-600 mb-6 ml-15">{message}</p>
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-700">{error}</p>
+              <div className="flex items-start gap-2">
+                <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={16} />
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
             </div>
           )}
           <div className="flex gap-3">
             <button
               onClick={onClose}
               disabled={loading}
-              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition"
+              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancelar
             </button>
             <button
               onClick={handleConfirm}
               disabled={loading}
-              className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-white transition ${
+              className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-white transition disabled:opacity-50 disabled:cursor-not-allowed ${
                 type === "danger" ? "bg-red-600 hover:bg-red-700" : "bg-[#4a9d9d] hover:bg-[#5aadad]"
-              } ${loading ? "opacity-50 cursor-not-allowed" : ""}`}
+              }`}
             >
-              {loading ? "Confirmando..." : "Confirmar"}
+              {loading ? "Procesando..." : "Confirmar"}
             </button>
           </div>
         </div>
@@ -133,15 +188,16 @@ const ProveedoresOrdenesModule = () => {
   const [formErrorProveedor, setFormErrorProveedor] = useState("")
   const [searchProveedores, setSearchProveedores] = useState("")
   const [filtroEstadoProveedor, setFiltroEstadoProveedor] = useState<boolean | undefined>(undefined)
-  const {fetchCondicionesPago, insertarCondicionesPago} = useCondicionesPagoProveedor()
+  const { insertarCondicionesPago} = useCondicionesPagoProveedor()
   // Estados Órdenes
   const {
     ordenes,
     loading: loadingOrdenes,
     error: errorOrdenes,
     insertarOrdenPedido,
-    cambiarEstadoPago,
+    actualizarOrdenPedido,
     fetchOrdenPedidos,
+    actualizarMontoCancelado
   } = useOrdenPedidos()
 
   const [showModalOrden, setShowModalOrden] = useState(false)
@@ -187,6 +243,13 @@ const ProveedoresOrdenesModule = () => {
   })
   const [formErrorDetalle, setFormErrorDetalle] = useState("")
   const [searchDetalles, setSearchDetalles] = useState("")
+
+  // Estado para modal de actualizar monto
+  const [showMontoModal, setShowMontoModal] = useState(false)
+  const [selectedOrdenForMonto, setSelectedOrdenForMonto] = useState<VistaOrdenPedido | null>(null)
+  const [montoInput, setMontoInput] = useState<number>(0)
+  const [montoError, setMontoError] = useState("")
+  const [montoLoading, setMontoLoading] = useState(false)
 
   // Estado para modal de confirmación
   const [confirmModal, setConfirmModal] = useState<{
@@ -257,7 +320,7 @@ const ProveedoresOrdenesModule = () => {
       }
       handleCloseModalProveedor()
     } catch (err: any) {
-      setFormErrorProveedor(err.message)
+      setFormErrorProveedor(getErrorMessage(err))
     }
   }
 
@@ -311,26 +374,48 @@ const ProveedoresOrdenesModule = () => {
   }
 
   const handleWizardNext = async () => {
-    if (wizardError) return // No proceder si hay un error pendiente
     setWizardLoading(true)
+    setWizardError("")
     try {
       if (wizardStep === 1) {
-        setWizardError("")
-        const response = await insertarOrdenPedido(wizardOrder)
-        setWizardOrderId(response.idOrdenPedido || 0)
+        // Validar número de orden
+        if (!wizardOrder.numeroOrden || wizardOrder.numeroOrden <= 0) {
+          setWizardError("Debe ingresar un número de orden válido")
+          setWizardLoading(false)
+          return
+        }
+        // Solo avanzar al paso 2, sin insertar en BD
         setWizardStep(2)
       } else if (wizardStep === 2) {
-        setWizardError("")
-        // Crear detalles
-        for (const detail of wizardDetails) {
-          await createDetalle(detail)
+        // Validar que haya al menos un detalle
+        if (wizardDetails.length === 0) {
+          setWizardError("Debe agregar al menos un producto a la orden")
+          setWizardLoading(false)
+          return
         }
+
+        // Validar que todos los detalles tengan un producto seleccionado y cantidad > 0
+        const detallesSinProducto = wizardDetails.filter(d => d.idProducto === 0)
+        if (detallesSinProducto.length > 0) {
+          setWizardError("Todos los productos deben estar seleccionados")
+          setWizardLoading(false)
+          return
+        }
+
+        const detallesSinCantidad = wizardDetails.filter(d => d.cantidad <= 0)
+        if (detallesSinCantidad.length > 0) {
+          setWizardError("Todos los productos deben tener una cantidad mayor a 0")
+          setWizardLoading(false)
+          return
+        }
+
+        // Solo avanzar al paso 3, sin insertar detalles en BD
         setWizardStep(3)
       } else if (wizardStep < 3) {
         setWizardStep(wizardStep + 1)
       }
     } catch (err: any) {
-      setWizardError(err.message)
+      setWizardError(getErrorMessage(err))
     } finally {
       setWizardLoading(false)
     }
@@ -341,45 +426,78 @@ const ProveedoresOrdenesModule = () => {
   }
 
   const handleWizardFinish = async () => {
-    if (wizardError) return // No proceder si hay un error pendiente
+    setWizardLoading(true)
+    setWizardError("")
     try {
-      setWizardError("")
-      if (!wizardOrderId) throw new Error("No hay orden creada")
+      // Validaciones finales
+      if (wizardFinal.idProveedor <= 0) {
+        setWizardError("Debe seleccionar un proveedor")
+        setWizardLoading(false)
+        return
+      }
 
-      // Actualizar orden con proveedor y pago
-      if (wizardFinal.idProveedor > 0 || wizardFinal.estadoPago || wizardFinal.montoCancelado > 0) {
-        await cambiarEstadoPago({
-          IdOrdenPedido: wizardOrderId,
+      // VALIDACIÓN OBLIGATORIA: Debe aceptar las condiciones de pago
+      if (!wizardFinal.acepta) {
+        setWizardError("Error El proveedor no ha aceptado la condición de pago. No se puede continuar.")
+        setWizardLoading(false)
+        return
+      }
+
+      // PASO 1: Crear la orden de pedido
+      const response = await insertarOrdenPedido(wizardOrder)
+      const orderId = response.idOrdenPedido
+      
+      if (!orderId || orderId === 0) {
+        throw new Error("No se pudo crear la orden de pedido")
+      }
+
+      // PASO 2: Crear todos los detalles de la orden
+      const detallesConOrden = wizardDetails.map(detail => ({
+        ...detail,
+        idOrdenPedido: orderId
+      }))
+
+      for (const detail of detallesConOrden) {
+        await createDetalle(detail)
+      }
+
+      // PASO 3: Actualizar orden con proveedor, estado de pago y monto + condiciones de pago
+      await Promise.all([
+        insertarCondicionesPago(wizardFinal.idProveedor, wizardFinal.acepta),
+        actualizarOrdenPedido({
+          IdOrdenPedido: orderId,
           EstadoPago: wizardFinal.estadoPago,
           IdProveedor: wizardFinal.idProveedor,
           MontoCancelado: wizardFinal.montoCancelado,
         })
-        await insertarCondicionesPago(wizardFinal.idProveedor, wizardFinal.acepta)
-      }
 
-      await fetchOrdenPedidos() // refresh final
+      ])
+
+      // Solo después de que TODAS las peticiones terminen exitosamente, refrescar y cerrar
+      await fetchOrdenPedidos()
       setShowWizardModal(false)
     } catch (err: any) {
-      setWizardError(err.message)
+      setWizardError(getErrorMessage(err))
+    } finally {
+      setWizardLoading(false)
     }
   }
 
   const handleAddWizardDetail = () => {
-    if (!wizardOrderId || wizardOrderId === 0) {
-      setWizardError("Primero debe crear la orden")
-      return
-    }
-    setWizardDetails([...wizardDetails, { idOrdenPedido: wizardOrderId, cantidad: 1, idProducto: productos.length > 0 ? productos[0].idProducto : 0 }])
+    // Ya no necesitamos validar wizardOrderId porque aún no se ha creado
+    setWizardDetails([...wizardDetails, { idOrdenPedido: 0, cantidad: 1, idProducto: productos.length > 0 ? productos[0].idProducto : 0 }])
   }
 
   const handleUpdateWizardDetail = (index: number, field: string, value: any) => {
     const newDetails = [...wizardDetails]
     newDetails[index] = { ...newDetails[index], [field]: value }
     setWizardDetails(newDetails)
+    setWizardError("") // Limpiar errores cuando se edita
   }
 
   const handleRemoveWizardDetail = (index: number) => {
     setWizardDetails(wizardDetails.filter((_, i) => i !== index))
+    setWizardError("") // Limpiar errores cuando se elimina
   }
 
   const handleSubmitOrden = async (e: React.FormEvent) => {
@@ -391,26 +509,32 @@ const ProveedoresOrdenesModule = () => {
       await fetchOrdenPedidos()
       handleCloseModalOrden()
     } catch (err: any) {
-      setFormErrorOrden(err.message)
+      setFormErrorOrden(getErrorMessage(err))
     }
   }
 
-  const handleCambiarEstadoPago = (orden: any) => {
-    setConfirmModal({
-      isOpen: true,
-      title: "¿Cambiar Estado de Pago?",
-      message: `¿Está seguro de cambiar el estado de pago de la orden #${orden.numeroOrden}?`,
-      type: "success",
-      onConfirm: async () => {
-        await cambiarEstadoPago({
-          IdOrdenPedido: orden.idOrdenPedido,
-          EstadoPago: orden.estadoPago !== "Pagado",
-          IdProveedor: orden.proveedor?.idProveedor, // Usar el ID del proveedor si existe
-          MontoCancelado: orden.montoCancelado, // Asegúrate de que este campo se maneje correctamente si está en tu DTO
-        })
-        await fetchOrdenPedidos()
-      },
-    })
+  const handleactualizarOrdenPedido = (orden: VistaOrdenPedido) => {
+    setSelectedOrdenForMonto(orden)
+    setMontoInput(orden.montoCancelado || 0)
+    setMontoError("")
+    setShowMontoModal(true)
+  }
+
+  const handleSubmitMonto = async () => {
+    setMontoLoading(true)
+    setMontoError("")
+    try {
+      if (!selectedOrdenForMonto) return
+
+      await actualizarMontoCancelado(selectedOrdenForMonto.idOrdenPedido, montoInput)
+      await fetchOrdenPedidos()
+      setShowMontoModal(false)
+      setSelectedOrdenForMonto(null)
+    } catch (err: any) {
+      setMontoError(getErrorMessage(err))
+    } finally {
+      setMontoLoading(false)
+    }
   }
 
   const handleViewOrder = (orden: VistaOrdenPedido) => {
@@ -459,7 +583,7 @@ const ProveedoresOrdenesModule = () => {
       await fetchOrdenPedidos()
       handleCloseModalDetalle()
     } catch (err: any) {
-      setFormErrorDetalle(err.message)
+      setFormErrorDetalle(getErrorMessage(err))
     }
   }
 
@@ -497,17 +621,6 @@ const ProveedoresOrdenesModule = () => {
               <FileText size={18} />
               Órdenes de Pedido
             </button>
-            <button
-              onClick={() => setActiveTab("detalles")}
-              className={`flex items-center gap-2 px-5 py-3 font-medium transition rounded-t-lg ${
-                activeTab === "detalles"
-                  ? "bg-white text-[#4a9d9d] border-t-2 border-x border-[#4a9d9d] border-b-0"
-                  : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
-              }`}
-            >
-              <ShoppingCart size={18} />
-              Detalles de Orden
-            </button>
           </div>
 
           <div className="p-6">
@@ -528,36 +641,6 @@ const ProveedoresOrdenesModule = () => {
                   </button>
                 </div>
 
-                {/* Filtros */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="relative md:col-span-2">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                    <input
-                      type="text"
-                      placeholder="Buscar por nombre, cédula o teléfono..."
-                      value={searchProveedores}
-                      onChange={(e) => setSearchProveedores(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                    />
-                  </div>
-                  <select
-                    value={filtroEstadoProveedor === undefined ? "" : filtroEstadoProveedor.toString()}
-                    onChange={(e) =>
-                      setFiltroEstadoProveedor(e.target.value === "" ? undefined : e.target.value === "true")
-                    }
-                    className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                  >
-                    <option value="">Todos los estados</option>
-                    <option value="true">Activos</option>
-                    <option value="false">Inactivos</option>
-                  </select>
-                  <button
-                    className="md:col-span-3 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-200 transition font-medium"
-                  >
-                    <Filter size={18} />
-                    Aplicar Filtros
-                  </button>
-                </div>
 
                 {errorProveedores && (
                   <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
@@ -668,50 +751,7 @@ const ProveedoresOrdenesModule = () => {
                   </button>
                 </div>
 
-                {/* Filtros */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                  <div className="relative md:col-span-2">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                    <input
-                      type="text"
-                      placeholder="Buscar por número o proveedor..."
-                      value={searchOrdenes}
-                      onChange={(e) => setSearchOrdenes(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                    />
-                  </div>
-                  <select
-                    value={filtroEstadoPago === undefined ? "" : filtroEstadoPago.toString()}
-                    onChange={(e) => setFiltroEstadoPago(e.target.value === "" ? undefined : e.target.value === "true")}
-                    className="px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                  >
-                    <option value="">Todos los estados</option>
-                    <option value="true">Pagado</option>
-                    <option value="false">Pendiente</option>
-                  </select>
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      value={filtroFechaInicio}
-                      onChange={(e) => setFiltroFechaInicio(e.target.value)}
-                      className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white text-sm"
-                      placeholder="Fecha inicio"
-                    />
-                    <input
-                      type="date"
-                      value={filtroFechaFin}
-                      onChange={(e) => setFiltroFechaFin(e.target.value)}
-                      className="flex-1 px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white text-sm"
-                      placeholder="Fecha fin"
-                    />
-                  </div>
-                  <button
-                    className="md:col-span-4 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-200 transition font-medium"
-                  >
-                    <Filter size={18} />
-                    Aplicar Filtros
-                  </button>
-                </div>
+
 
                 {errorOrdenes && (
                   <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
@@ -786,15 +826,11 @@ const ProveedoresOrdenesModule = () => {
                                     <Eye size={16} />
                                   </button>
                                   <button
-                                    onClick={() => handleCambiarEstadoPago(orden)}
-                                    className={`p-1.5 rounded-lg transition ${
-                                      orden.estadoPago === "Pagado"
-                                        ? "text-amber-600 hover:text-amber-800 hover:bg-amber-50"
-                                        : "text-green-600 hover:text-green-800 hover:bg-green-50"
-                                    }`}
-                                    title={orden.estadoPago === "Pagado" ? "Marcar como pendiente" : "Marcar como pagado"}
+                                    onClick={() => handleactualizarOrdenPedido(orden)}
+                                    className="text-[#4a9d9d] hover:text-[#5aadad] p-1.5 hover:bg-[#4a9d9d]/10 rounded-lg transition"
+                                    title="Actualizar monto cancelado"
                                   >
-                                    {orden.estadoPago === "Pagado" ? <XCircle size={16} /> : <CheckCircle size={16} />}
+                                    <Edit2 size={16} />
                                   </button>
                                 </div>
                               </td>
@@ -814,107 +850,7 @@ const ProveedoresOrdenesModule = () => {
               </>
             )}
 
-            {/* Detalles Tab */}
-            {activeTab === "detalles" && (
-              <>
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-800">Detalles de Orden</h2>
-                    <p className="text-sm text-gray-500 mt-0.5">Gestiona los productos de las órdenes</p>
-                  </div>
-                  <button
-                    onClick={() => handleOpenModalDetalle()}
-                    className="flex items-center gap-2 bg-[#4a9d9d] text-white px-4 py-2.5 rounded-lg hover:bg-[#5aadad] transition shadow-sm font-medium"
-                    disabled={productos.length === 0 || ordenes.length === 0}
-                  >
-                    <Plus size={18} />
-                    Agregar Producto
-                  </button>
-                </div>
 
-                {productos.length === 0 && (
-                  <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
-                    <AlertCircle size={20} />
-                    <span className="text-sm">Debe crear productos antes de agregar detalles</span>
-                  </div>
-                )}
-
-                {ordenes.length === 0 && productos.length > 0 && (
-                  <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
-                    <AlertCircle size={20} />
-                    <span className="text-sm">Debe crear órdenes de pedido antes de agregar detalles</span>
-                  </div>
-                )}
-
-                <div className="relative mb-6">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                  <input
-                    type="text"
-                    placeholder="Buscar por nombre de producto..."
-                    value={searchDetalles}
-                    onChange={(e) => setSearchDetalles(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                  />
-                </div>
-
-                {errorDetalles && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
-                    <AlertCircle size={20} />
-                    <span className="text-sm">{errorDetalles}</span>
-                  </div>
-                )}
-
-                {loadingDetalles ? (
-                  <div className="text-center py-12">
-                    <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-[#4a9d9d] border-t-transparent"></div>
-                    <p className="mt-4 text-gray-600 text-sm">Cargando detalles...</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto rounded-lg border border-gray-200">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            ID
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Producto
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Cantidad
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Monto Unit.
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Impuesto
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Descuento
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Subtotal
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Stock
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Acciones
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {/* No hay endpoint para obtener detalles */}
-                      </tbody>
-                    </table>
-                    <div className="text-center py-12 text-gray-500">
-                      <ShoppingCart size={48} className="mx-auto mb-3 text-gray-300" />
-                      <p className="text-sm">No hay endpoint disponible para listar detalles de orden</p>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
           </div>
         </div>
       </div>
@@ -946,7 +882,10 @@ const ProveedoresOrdenesModule = () => {
                   <input
                     type="text"
                     value={formDataProveedor.cedulaJuridica}
-                    onChange={(e) => setFormDataProveedor({ ...formDataProveedor, cedulaJuridica: e.target.value })}
+                    onChange={(e) => {
+                      setFormDataProveedor({ ...formDataProveedor, cedulaJuridica: e.target.value })
+                      setFormErrorProveedor("") // Limpiar error al editar
+                    }}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                     disabled={!!editingProveedor}
@@ -959,7 +898,10 @@ const ProveedoresOrdenesModule = () => {
                   <input
                     type="text"
                     value={formDataProveedor.nombre}
-                    onChange={(e) => setFormDataProveedor({ ...formDataProveedor, nombre: e.target.value })}
+                    onChange={(e) => {
+                      setFormDataProveedor({ ...formDataProveedor, nombre: e.target.value })
+                      setFormErrorProveedor("") // Limpiar error al editar
+                    }}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                     maxLength={30}
@@ -971,7 +913,10 @@ const ProveedoresOrdenesModule = () => {
                   <input
                     type="text"
                     value={formDataProveedor.telefono}
-                    onChange={(e) => setFormDataProveedor({ ...formDataProveedor, telefono: e.target.value })}
+                    onChange={(e) => {
+                      setFormDataProveedor({ ...formDataProveedor, telefono: e.target.value })
+                      setFormErrorProveedor("") // Limpiar error al editar
+                    }}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                     maxLength={8}
@@ -979,18 +924,19 @@ const ProveedoresOrdenesModule = () => {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={handleCloseModalProveedor}
-                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition"
-                  >
-                    Cancelar
-                  </button>
+           
                   <button
                     type="submit"
                     className="flex-1 px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition shadow-sm"
                   >
                     {editingProveedor ? "Actualizar" : "Crear"}
+                  </button>
+                     <button
+                    type="button"
+                    onClick={handleCloseModalProveedor}
+                    className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition"
+                  >
+                    Cancelar
                   </button>
                 </div>
               </form>
@@ -1037,18 +983,19 @@ const ProveedoresOrdenesModule = () => {
                 </div>
 
                 <div className="flex gap-3 pt-4">
+                  
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition shadow-sm"
+                  >
+                    Crear Orden
+                  </button>
                   <button
                     type="button"
                     onClick={handleCloseModalOrden}
                     className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition"
                   >
                     Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition shadow-sm"
-                  >
-                    Crear Orden
                   </button>
                 </div>
               </form>
@@ -1104,9 +1051,10 @@ const ProveedoresOrdenesModule = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Producto *</label>
                   <select
                     value={formDataDetalle.idProducto}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setFormDataDetalle({ ...formDataDetalle,idProducto: Number.parseInt(e.target.value) })
-                    }
+                      setFormErrorDetalle("") // Limpiar error al editar
+                    }}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                   >
@@ -1124,9 +1072,10 @@ const ProveedoresOrdenesModule = () => {
                   <input
                     type="number"
                     value={formDataDetalle.cantidad}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setFormDataDetalle({ ...formDataDetalle, cantidad: Number.parseInt(e.target.value) || 1 })
-                    }
+                      setFormErrorDetalle("") // Limpiar error al editar
+                    }}
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                     required
                     min="1"
@@ -1160,6 +1109,13 @@ const ProveedoresOrdenesModule = () => {
                 )}
 
                 <div className="flex gap-3 pt-4">
+                  
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition shadow-sm"
+                  >
+                    {editingDetalle ? "Actualizar" : "Agregar"}
+                  </button>
                   <button
                     type="button"
                     onClick={handleCloseModalDetalle}
@@ -1167,14 +1123,116 @@ const ProveedoresOrdenesModule = () => {
                   >
                     Cancelar
                   </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition shadow-sm"
-                  >
-                    {editingDetalle ? "Actualizar" : "Agregar"}
-                  </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Actualizar Monto */}
+      {showMontoModal && selectedOrdenForMonto && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-xs bg-opacity-40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-800">Actualizar Monto Cancelado</h2>
+              <button 
+                onClick={() => setShowMontoModal(false)} 
+                className="text-gray-400 hover:text-gray-600 transition"
+                disabled={montoLoading}
+              >
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="mb-4 p-4 bg-[#4a9d9d]/10 border border-[#4a9d9d]/20 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Orden:</span>
+                  <span className="text-lg font-bold text-[#4a9d9d]">#{selectedOrdenForMonto.numeroOrden}</span>
+                </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Proveedor:</span>
+                  <span className="text-sm text-gray-900">{selectedOrdenForMonto.proveedor?.nombre || "Sin proveedor"}</span>
+                </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Monto Total:</span>
+                  <span className="text-lg font-bold text-gray-900">
+                    ₡{selectedOrdenForMonto.montoTotal.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-700">Estado Actual:</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    selectedOrdenForMonto.estadoPago === "Pagado" 
+                      ? "bg-green-100 text-green-700" 
+                      : "bg-yellow-100 text-yellow-700"
+                  }`}>
+                    {selectedOrdenForMonto.estadoPago}
+                  </span>
+                </div>
+              </div>
+
+              {montoError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={16} />
+                    <p className="text-sm text-red-700">{montoError}</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Monto Cancelado *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">₡</span>
+                  <input
+                    type="number"
+                    value={montoInput}
+                    onChange={(e) => {
+                      setMontoInput(Number(e.target.value) || 0)
+                      setMontoError("")
+                    }}
+                    className="w-full pl-8 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                    min="0"
+                    step="0.01"
+                    disabled={montoLoading}
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  <strong>Nota:</strong> El estado de pago se actualizará automáticamente según el monto ingresado.
+                  {montoInput >= selectedOrdenForMonto.montoTotal && (
+                    <span className="block text-green-600 font-medium mt-1">
+                      ✓ El estado cambiará a "Pagado"
+                    </span>
+                  )}
+                  {montoInput > 0 && montoInput < selectedOrdenForMonto.montoTotal && (
+                    <span className="block text-yellow-600 font-medium mt-1">
+                      ⚠ El estado será "Pendiente"
+                    </span>
+                  )}
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowMontoModal(false)}
+                  disabled={montoLoading}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSubmitMonto}
+                  disabled={montoLoading}
+                  className="flex-1 px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {montoLoading ? "Actualizando..." : "Actualizar Monto"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1227,7 +1285,10 @@ const ProveedoresOrdenesModule = () => {
                     <input
                       type="number"
                       value={wizardOrder.numeroOrden || ""}
-                      onChange={(e) => setWizardOrder({ ...wizardOrder, numeroOrden: Number.parseInt(e.target.value) || 0 })}
+                      onChange={(e) => {
+                        setWizardOrder({ ...wizardOrder, numeroOrden: Number.parseInt(e.target.value) || 0 })
+                        setWizardError("") // Limpiar error al editar
+                      }}
                       className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                       required
                       min="1"
@@ -1279,7 +1340,7 @@ const ProveedoresOrdenesModule = () => {
                               <label className="block text-xs font-medium text-gray-600 mb-1">Producto</label>
                               <select
                                 value={detail.idProducto}
-                                onChange={(e) => handleUpdateWizardDetail(index, 'IdProducto', Number.parseInt(e.target.value))}
+                                onChange={(e) => handleUpdateWizardDetail(index, 'idProducto', Number.parseInt(e.target.value))}
                                 className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
                               >
                                 <option value={0}>Seleccione un producto</option>
@@ -1327,9 +1388,10 @@ const ProveedoresOrdenesModule = () => {
               {wizardStep === 3 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium text-gray-800">Finalizar Orden</h3>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Proveedor (Opcional)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Proveedor</label>
                       <select
                         value={wizardFinal.idProveedor}
                         onChange={(e) => setWizardFinal({ ...wizardFinal, idProveedor: Number.parseInt(e.target.value) })}
@@ -1375,16 +1437,6 @@ const ProveedoresOrdenesModule = () => {
                       />
                     </div>
                   </div>
-                  <div className="bg-[#4a9d9d]/10 border border-[#4a9d9d]/20 rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-[#4a9d9d] mb-2">Resumen de la Orden</h4>
-                    <div className="space-y-1 text-sm text-[#4a9d9d]">
-                      <p><span className="font-medium">Número de Orden:</span> #{wizardOrder.numeroOrden}</p>
-                      <p><span className="font-medium">Productos:</span> {wizardDetails.length}</p>
-                      <p><span className="font-medium">Proveedor:</span> {wizardFinal.idProveedor > 0 ? proveedores.find((p: VistaProveedor) => p.idProveedor === wizardFinal.idProveedor)?.nombre : 'Sin asignar'}</p>
-                      <p><span className="font-medium">Estado de Pago:</span> {wizardFinal.estadoPago ? 'Pagado' : 'Pendiente'}</p>
-
-                    </div>
-                  </div>
                 </div>
               )}
 
@@ -1393,7 +1445,7 @@ const ProveedoresOrdenesModule = () => {
                 <button
                   type="button"
                   onClick={handleWizardBack}
-                  disabled={wizardStep === 1}
+                  disabled={wizardStep === 1 || wizardLoading}
                   className="px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Anterior
@@ -1403,18 +1455,19 @@ const ProveedoresOrdenesModule = () => {
                     <button
                       type="button"
                       onClick={handleWizardNext}
-                      disabled={wizardStep === 1 && wizardOrder.numeroOrden === 0}
+                      disabled={wizardLoading || (wizardStep === 1 && wizardOrder.numeroOrden === 0)}
                       className="px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Siguiente
+                      {wizardLoading ? 'Procesando...' : 'Siguiente'}
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={handleWizardFinish}
-                      className="px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition"
+                      disabled={wizardLoading}
+                      className="px-4 py-2.5 bg-[#4a9d9d] text-white rounded-lg font-medium hover:bg-[#5aadad] transition disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      Finalizar Orden
+                      {wizardLoading ? 'Finalizando...' : 'Finalizar Orden'}
                     </button>
                   )}
                 </div>

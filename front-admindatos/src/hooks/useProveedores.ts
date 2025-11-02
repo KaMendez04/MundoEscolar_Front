@@ -43,7 +43,7 @@ export const useProveedores = () => {
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al insertar proveedor';
       setError(errorMsg);
-      throw new Error(errorMsg);
+      throw err; // Lanzar el error original
     }
   };
 
@@ -56,7 +56,7 @@ export const useProveedores = () => {
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al actualizar proveedor';
       setError(errorMsg);
-      throw new Error(errorMsg);
+      throw err; // Lanzar el error original
     }
   };
 
@@ -69,7 +69,7 @@ export const useProveedores = () => {
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al desactivar proveedor';
       setError(errorMsg);
-      throw new Error(errorMsg);
+      throw err; // Lanzar el error original
     }
   };
 
@@ -82,7 +82,7 @@ export const useProveedores = () => {
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al activar proveedor';
       setError(errorMsg);
-      throw new Error(errorMsg);
+      throw err; // Lanzar el error original
     }
   };
 
@@ -129,7 +129,7 @@ export const useCondicionesPagoProveedor = () =>{
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al insertar condiciones de pago';
       setError(errorMsg);
-      throw new Error(errorMsg);
+      throw err; // Lanzar el error original
     }
   };
 
