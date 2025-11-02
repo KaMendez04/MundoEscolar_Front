@@ -1,7 +1,7 @@
 // src/hooks/useFacturas.ts
 import { useEffect, useState } from 'react';
 import { facturasService, type FacturaUpdateDto } from '../services/facturasTablaService';
-import type { Factura } from '../types/facturas';
+import type { Factura } from '../types/facturasTabla';
 
 export function useFacturas() {
   const [facturas, setFacturas] = useState<Factura[]>([]);

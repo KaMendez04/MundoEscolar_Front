@@ -1,4 +1,5 @@
 // types/cliente.ts
+
 export interface Cliente {
   idCliente: number;
   nombre: string;
@@ -8,7 +9,25 @@ export interface Cliente {
   cedula: number;
   contacto: string;
   correoElectronico: string;
-  condicionesPago: boolean;
 }
 
-export type UpdateClienteDto = Omit<Cliente, 'idCliente'>;
+export interface CreateClienteDto {
+  nombre: string;
+  apellido1: string;
+  apellido2: string;
+  tipoCliente: string;
+  cedula: number;
+  contacto: string;
+  correoElectronico: string;
+}
+
+export interface UpdateClienteDto {
+  idCliente: number;
+  nombre?: string;
+  apellido1?: string;
+  apellido2?: string;
+  tipoCliente?: string;
+  cedula?: number;
+  contacto?: string;
+  correoElectronico?: string;
+}
