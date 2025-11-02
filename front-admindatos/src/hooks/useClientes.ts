@@ -1,53 +1,97 @@
 // hooks/useClientes.ts
 import { useState, useEffect } from 'react';
 import { clienteService } from '../services/clienteService';
-import type { Cliente, UpdateClienteDto } from '../types/cliente';
+import type { Cliente, CreateClienteDto, UpdateClienteDto } from '../types/cliente';
 
 export const useClientes = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
 
+  // Obtener todos los clientes
   const fetchClientes = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
       const data = await clienteService.getAllClientes();
       setClientes(data);
-      setError(null);
-    } catch (err) {
-      setError('Error al cargar los clientes');
-      console.error(err);
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al cargar los clientes';
+      setError(errorMsg);
+      console.error('Error fetching clientes:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchClienteByCedula = async (cedula: number) => {
+  // Buscar cliente por cédula
+  const fetchClienteByCedula = async (cedula: number): Promise<Cliente | null> => {
+    setLoading(true);
+    setError(null);
     try {
       const data = await clienteService.getClienteByCedula(cedula);
       setSelectedCliente(data);
-      setError(null);
-    } catch (err) {
-      setError('Error al buscar el cliente');
-      console.error(err);
+      return data;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Cliente no encontrado';
+      setError(errorMsg);
+      console.error('Error fetching cliente by cedula:', err);
+      return null;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateCliente = async (clienteData: UpdateClienteDto) => {
+  // Crear nuevo cliente
+  const createCliente = async (clienteData: CreateClienteDto): Promise<Cliente | null> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const nuevoCliente = await clienteService.createCliente(clienteData);
+      // Actualizar la lista local
+      setClientes([...clientes, nuevoCliente]);
+      setSelectedCliente(nuevoCliente);
+      return nuevoCliente;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al crear cliente';
+      setError(errorMsg);
+      console.error('Error creating cliente:', err);
+      throw new Error(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Actualizar cliente existente
+  const updateCliente = async (clienteData: UpdateClienteDto): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
     try {
       await clienteService.updateCliente(clienteData);
-      await fetchClientes(); // Refresh the list
-      if (selectedCliente && clienteData.cedula === selectedCliente.cedula) {
+      // Refrescar la lista completa
+      await fetchClientes();
+      // Actualizar cliente seleccionado si es el mismo
+      if (selectedCliente && clienteData.idCliente === selectedCliente.idCliente) {
         setSelectedCliente({ ...selectedCliente, ...clienteData });
       }
-      setError(null);
-    } catch (err) {
-      setError('Error al actualizar el cliente');
-      console.error(err);
+      return true;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al actualizar cliente';
+      setError(errorMsg);
+      console.error('Error updating cliente:', err);
+      return false;
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Limpiar cliente seleccionado
+  const clearSelectedCliente = () => {
+    setSelectedCliente(null);
+  };
+
+  // Cargar clientes al montar el componente
   useEffect(() => {
     fetchClientes();
   }, []);
@@ -59,6 +103,9 @@ export const useClientes = () => {
     error,
     fetchClientes,
     fetchClienteByCedula,
+    createCliente,
     updateCliente,
+    clearSelectedCliente,
+    setError,
   };
 };

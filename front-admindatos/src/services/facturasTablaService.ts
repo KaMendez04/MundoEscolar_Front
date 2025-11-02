@@ -1,6 +1,6 @@
 // src/services/facturasService.ts
 import client from '../Client/ConfigClient';
-import type { Factura } from '../types/facturas';
+import type { Factura } from '../types/facturasTabla';
 
 export interface FacturaUpdateDto {
   idFactura: number;

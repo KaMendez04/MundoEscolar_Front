@@ -9,7 +9,7 @@ import {
   Eye,
 } from "lucide-react"
 import { useFacturas } from "../hooks/useFacturasTabla"
-import type { Factura } from "../types/facturas"
+import type { Factura } from "../types/facturasTabla"
 
 // Modal de Detalles
 const DetalleFacturaModal = ({ factura, onClose }: { factura: Factura | null; onClose: () => void }) => {

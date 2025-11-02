@@ -41,19 +41,43 @@ export const useOrdenPedidos = () => {
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al insertar orden de pedido';
       setError(errorMsg);
-      throw new Error(errorMsg);
+      throw err; // Lanzar el error original en lugar de crear uno nuevo
     }
   };
 
-  const cambiarEstadoPago = async (updateDto: UpdateOrdenPedidoDto) => {
+  const actualizarOrdenPedido = async (updateDto: UpdateOrdenPedidoDto) => {
     try {
       setError(null);
-      const mensajes = await ordenPedidoService.cambiarEstadoPago(updateDto);
+      const mensajes = await ordenPedidoService.actualizarOrdenPedido(updateDto);
       return mensajes;
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al cambiar estado de pago';
       setError(errorMsg);
-      throw new Error(errorMsg);
+      throw err; // Lanzar el error original en lugar de crear uno nuevo
+    }
+  };
+
+  const actualizarMontoCancelado = async (idOrdenPedido: number, montoCancelado: number) => {
+    try {
+      setError(null);
+      const mensajes = await ordenPedidoService.actualizarMontoCancelado(idOrdenPedido, montoCancelado);
+      return mensajes;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Error al actualizar monto cancelado';
+      setError(errorMsg);
+      throw err; // Lanzar el error original en lugar de crear uno nuevo
+    }
+  };
+
+  const obtenerOrdenPedidoPorId = async (id: number) => {
+    try {
+      setError(null);
+      const orden = await ordenPedidoService.obtenerOrdenPedidoPorId(id);
+      return orden;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Error al obtener orden de pedido';
+      setError(errorMsg);
+      throw err;
     }
   };
 
@@ -62,7 +86,9 @@ export const useOrdenPedidos = () => {
     loading,
     error,
     insertarOrdenPedido,
-    cambiarEstadoPago,
+    actualizarOrdenPedido,
     fetchOrdenPedidos,
+    obtenerOrdenPedidoPorId,
+    actualizarMontoCancelado,
   };
 };

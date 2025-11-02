@@ -4,7 +4,8 @@ import type {
   Proveedor, 
   CreateProveedorDto, 
   UpdateProveedorDto, 
-  VistaProveedor
+  VistaProveedor,
+  CondicionPagoProveedor
 } from '../types/proveedor';
 
 export const proveedorService = {
@@ -37,4 +38,17 @@ export const proveedorService = {
     const response = await client.get<Proveedor>(`/Proveedor/${cedulaJuridica}`);
     return response.data;
   },
+};
+
+export const condicionsPagoProveedorService = {
+  obtenerCondicionesPago: async (idProveedor: number): Promise<CondicionPagoProveedor> => {
+    const response = await client.get<CondicionPagoProveedor>(`/CondicionesPagoProveedor/${idProveedor}`);
+    return response.data;
+  },
+
+
+  crearActualizarCondicionesPago: async (idProveedor: number, acepta: boolean, condiciones?: string[]): Promise<string[]> => {
+    const response = await client.post<string[]>(`/CondicionesPagoProveedor/`, { idProveedor, acepta, condiciones });
+    return response.data;
+  }
 };

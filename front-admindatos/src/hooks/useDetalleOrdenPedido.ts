@@ -18,7 +18,7 @@ export const useDetalleOrdenPedido = () => {
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al crear detalle';
       setError(errorMsg);
-      throw new Error(errorMsg);
+      throw err; // Lanzar el error original
     } finally {
       setLoading(false);
     }
@@ -33,7 +33,7 @@ export const useDetalleOrdenPedido = () => {
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al actualizar detalle';
       setError(errorMsg);
-      throw new Error(errorMsg);
+      throw err; // Lanzar el error original
     } finally {
       setLoading(false);
     }
