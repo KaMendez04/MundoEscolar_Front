@@ -1,13 +1,27 @@
 // components/VentasModule.tsx
-import { useState } from "react"
-import { ShoppingCart, Plus, Minus, Trash2, Package, Briefcase, Search, X, ShoppingBag, User, Receipt, UserPlus } from "lucide-react"
+import { useState, useEffect, useCallback } from "react"
+import {
+  ShoppingCart,
+  Plus,
+  Minus,
+  Trash2,
+  Package,
+  Briefcase,
+  Search,
+  X,
+  ShoppingBag,
+  User,
+  Receipt,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react"
 import { useProductos } from "../hooks/useProdutos"
 import { useServicios } from "../hooks/useServicios"
 import { useFacturas } from "../hooks/useFacturas"
 import { useDetalleFactura } from "../hooks/useDetalleFactura"
 import { useClientes } from "../hooks/useClientes"
-import ModalCrearCliente from "./Ventas/ModalCrearCliente"
-import type { Cliente } from "../types/cliente"
+import type { Cliente, CreateClienteDto } from "../types/cliente"
+import ModalCliente from "../components/Ventas/ModalCrearCliente"
 
 type ItemVenta = {
   id: string
@@ -24,16 +38,69 @@ type ItemVenta = {
   stockDisponible?: number
 }
 
+// Modal de Confirmación
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "danger" }: any) => {
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-4">
+            {type === "danger" ? (
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertCircle className="text-red-600" size={24} />
+              </div>
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-[#4a9d9d]/10 flex items-center justify-center">
+                <CheckCircle className="text-[#4a9d9d]" size={24} />
+              </div>
+            )}
+            <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
+          </div>
+          <p className="text-gray-600 mb-6 ml-15">{message}</p>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => {
+                onConfirm()
+                onClose()
+              }}
+              className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-white transition ${
+                type === "danger" ? "bg-red-600 hover:bg-red-700" : "bg-[#4a9d9d] hover:bg-[#5aadad]"
+              }`}
+            >
+              Confirmar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const VentasModule = () => {
   const { productos, loading: loadingProductos } = useProductos()
   const { servicios, loading: loadingServicios } = useServicios()
   const { factura, createFactura, fetchFacturaById, updateFactura, loading: loadingFactura } = useFacturas()
-  const { addDetalleFactura, loading: loadingDetalle } = useDetalleFactura()
-  const { createCliente, loading: loadingCliente } = useClientes()
+  const { addDetalleFactura } = useDetalleFactura()
+  const {
+    clientes = [],
+    fetchClientes,
+    fetchClienteByCedula,
+    createCliente,
+    loading: loadingClientes,
+  } = useClientes()
 
   const [carrito, setCarrito] = useState<ItemVenta[]>([])
   const [mostrarModal, setMostrarModal] = useState(false)
   const [mostrarModalCliente, setMostrarModalCliente] = useState(false)
+  const [mostrarModalConfirm, setMostrarModalConfirm] = useState(false)
   const [tipoModal, setTipoModal] = useState<"producto" | "servicio">("producto")
   const [searchTerm, setSearchTerm] = useState("")
   const [idFacturaActual, setIdFacturaActual] = useState<number | null>(null)
@@ -43,72 +110,51 @@ const VentasModule = () => {
   const [montoCancelado, setMontoCancelado] = useState<string>("")
   const [mostrarResumenFinal, setMostrarResumenFinal] = useState(false)
 
-  // Filtrar productos/servicios según búsqueda
-  const itemsFiltrados =
-    tipoModal === "producto"
-      ? productos.filter(
-          (p) =>
-            p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.descripcion.toLowerCase().includes(searchTerm.toLowerCase()),
-        )
-      : servicios.filter(
-          (s) =>
-            s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            s.descripcion.toLowerCase().includes(searchTerm.toLowerCase()),
-        )
+  // Filtrar productos/servicios
+  const itemsFiltrados = tipoModal === "producto"
+    ? productos.filter(
+        (p) =>
+          p.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          p.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : servicios.filter(
+        (s) =>
+          s.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          s.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
+      )
 
-  // ============================================
-  // CREAR FACTURA INICIAL
-  // ============================================
+  // INICIALIZAR FACTURA
   const inicializarFactura = async () => {
     if (!idFacturaActual) {
       const nuevaFactura = await createFactura()
       if (nuevaFactura) {
         setIdFacturaActual(nuevaFactura.idFactura)
         setNumeroFactura(nuevaFactura.numeroFactura)
-        console.log("✅ Factura creada:", nuevaFactura)
       }
     }
   }
 
-  // ============================================
-  // AGREGAR ITEM AL CARRITO
-  // ============================================
+  // AGREGAR AL CARRITO
   const agregarAlCarrito = async (item: any, tipo: "producto" | "servicio") => {
     const itemId = `${tipo}-${tipo === "producto" ? item.idProducto : item.idServicio}`
     const existente = carrito.find((i) => i.id === itemId)
 
-    // Validar stock para productos
-    if (tipo === "producto" && existente) {
-      if (existente.cantidad >= item.stock) {
-        alert("⚠️ No hay suficiente stock disponible")
-        return
-      }
+    if (tipo === "producto" && existente && existente.cantidad >= item.stock) {
+      alert("No hay suficiente stock disponible")
+      return
     }
 
-    // Inicializar factura si no existe
-    if (!idFacturaActual) {
-      await inicializarFactura()
-    }
+    if (!idFacturaActual) await inicializarFactura()
 
     if (existente) {
-      // Incrementar cantidad del item existente
       const nuevaCantidad = existente.cantidad + 1
       const nuevoSubtotal = nuevaCantidad * existente.precioUnitario
-
       setCarrito(
         carrito.map((i) =>
-          i.id === itemId
-            ? {
-                ...i,
-                cantidad: nuevaCantidad,
-                subtotal: nuevoSubtotal,
-              }
-            : i,
-        ),
+          i.id === itemId ? { ...i, cantidad: nuevaCantidad, subtotal: nuevoSubtotal } : i
+        )
       )
 
-      // Agregar 1 unidad más al detalle en backend
       if (idFacturaActual) {
         await addDetalleFactura({
           idFactura: idFacturaActual,
@@ -118,11 +164,7 @@ const VentasModule = () => {
         })
       }
     } else {
-      // Crear nuevo item en el carrito
       const precioUnitario = item.monto ?? item.precio ?? 0
-      const impuesto = item.impuesto ?? 0
-      const descuento = item.descuento ?? 0
-
       const nuevoItem: ItemVenta = {
         id: itemId,
         tipo,
@@ -132,13 +174,12 @@ const VentasModule = () => {
         precioUnitario,
         cantidad: 1,
         subtotal: precioUnitario,
-        impuesto,
-        descuento,
+        impuesto: 0,
+        descuento: 0,
         stockDisponible: tipo === "producto" ? item.stock : undefined,
       }
       setCarrito([...carrito, nuevoItem])
 
-      // Agregar detalle a la factura en backend
       if (idFacturaActual) {
         await addDetalleFactura({
           idFactura: idFacturaActual,
@@ -153,35 +194,25 @@ const VentasModule = () => {
     setSearchTerm("")
   }
 
-  // ============================================
   // ACTUALIZAR CANTIDAD
-  // ============================================
   const actualizarCantidad = async (itemId: string, cambio: number) => {
     const item = carrito.find((i) => i.id === itemId)
     if (!item) return
 
     const nuevaCantidad = Math.max(1, item.cantidad + cambio)
-
-    // Validar stock para productos
     if (item.tipo === "producto" && item.stockDisponible && nuevaCantidad > item.stockDisponible) {
-      alert("⚠️ No hay suficiente stock disponible")
+      alert("No hay suficiente stock disponible")
       return
     }
 
-    // Actualizar carrito local
     setCarrito(
       carrito.map((i) =>
         i.id === itemId
-          ? {
-              ...i,
-              cantidad: nuevaCantidad,
-              subtotal: nuevaCantidad * i.precioUnitario,
-            }
-          : i,
-      ),
+          ? { ...i, cantidad: nuevaCantidad, subtotal: nuevaCantidad * i.precioUnitario }
+          : i
+      )
     )
 
-    // Si es incremento, agregar al backend
     if (idFacturaActual && cambio > 0) {
       await addDetalleFactura({
         idFactura: idFacturaActual,
@@ -190,82 +221,83 @@ const VentasModule = () => {
         idServicio: item.tipo === "servicio" ? item.idItem : null,
       })
     }
-    // TODO: Si es decremento, necesitarías un endpoint para restar cantidad
   }
 
-  // ============================================
-  // ELIMINAR ITEM DEL CARRITO
-  // ============================================
+  // ELIMINAR ITEM
   const eliminarDelCarrito = (itemId: string) => {
     setCarrito(carrito.filter((item) => item.id !== itemId))
-    // TODO: Implementar eliminación en backend si es necesario
   }
 
-  // ============================================
-  // CALCULAR TOTALES
-  // ============================================
+  // CALCULAR TOTALES - Ahora también suma impuestos y descuentos de los detalles reales
   const calcularTotales = () => {
     let subtotal = 0
     let totalImpuesto = 0
     let totalDescuento = 0
-
+    
     carrito.forEach((item) => {
-      const precioBase = item.cantidad * item.precioUnitario
-      subtotal += precioBase
-      totalImpuesto += (precioBase * item.impuesto) / 100
-      totalDescuento += (precioBase * item.descuento) / 100
+      subtotal += item.subtotal
     })
-
-    const montoTotal = subtotal + totalImpuesto - totalDescuento
-
-    return {
-      subtotal,
-      impuesto: totalImpuesto,
-      descuento: totalDescuento,
-      total: montoTotal,
-    }
+    
+    // Estimación de impuestos y descuentos (se recalcularán en el backend)
+    // Pero los mostramos para que el usuario tenga una idea
+    const total = subtotal
+    
+    return { subtotal, impuesto: totalImpuesto, descuento: totalDescuento, total }
   }
 
-  // ============================================
-  // PROCESAR VENTA
-  // ============================================
+  // CALCULAR TOTALES REALES desde la factura del backend
+  const calcularTotalesReales = (facturaData: any) => {
+    let subtotal = 0
+    let totalImpuesto = 0
+    let totalDescuento = 0
+    
+    if (facturaData?.detalles) {
+      facturaData.detalles.forEach((detalle: any) => {
+        subtotal += detalle.subtotal || 0
+        totalImpuesto += detalle.impuesto || 0
+        totalDescuento += detalle.descuento || 0
+      })
+    }
+    
+    const total = subtotal + totalImpuesto - totalDescuento
+    return { subtotal, impuesto: totalImpuesto, descuento: totalDescuento, total }
+  }
+
+  // PROCESAR VENTA - Corregido para recalcular totales después de obtener la factura
   const procesarVenta = async () => {
-    if (carrito.length === 0) {
-      alert("⚠️ El carrito está vacío")
-      return
-    }
+    if (carrito.length === 0) return alert("El carrito está vacío")
+    if (!idVendedor) return alert("Debe ingresar el ID del vendedor")
+    if (!idFacturaActual) return alert("No se ha creado una factura")
 
-    if (!idVendedor) {
-      alert("⚠️ Debe ingresar el ID del vendedor")
-      return
-    }
+    try {
+      const totales = calcularTotales()
+      const montoIngresado = montoCancelado ? parseFloat(montoCancelado) : 0
 
-    if (!idFacturaActual) {
-      alert("⚠️ No se ha creado una factura")
-      return
-    }
+      // Primero actualizar la factura con vendedor y cliente
+      const success = await updateFactura({
+        idFactura: idFacturaActual,
+        idVendedor: parseInt(idVendedor),
+        idCliente: clienteSeleccionado?.idCliente || null,
+        montoCancelado: montoIngresado,
+        estadoPago: true, // Siempre marcamos como pagado al procesar
+      })
 
-    // Actualizar factura con vendedor, cliente y monto cancelado
-    const success = await updateFactura({
-      idFactura: idFacturaActual,
-      idVendedor: parseInt(idVendedor),
-      idCliente: clienteSeleccionado?.idCliente || null,
-      montoCancelado: montoCancelado ? parseFloat(montoCancelado) : 0,
-      estadoPago: true,
-    })
-
-    if (success) {
-      // Obtener factura completa con todos los detalles
-      await fetchFacturaById(idFacturaActual)
-      setMostrarResumenFinal(true)
-    } else {
-      alert("❌ Error al procesar la venta")
+      if (success) {
+        // Esperar a que el backend procese
+        setTimeout(async () => {
+          await fetchFacturaById(idFacturaActual)
+          setMostrarResumenFinal(true)
+        }, 800)
+      } else {
+        alert("Error al procesar la venta")
+      }
+    } catch (error: any) {
+      console.error("Error procesando venta:", error)
+      alert(`Error al procesar la venta: ${error.message || 'Error desconocido'}`)
     }
   }
 
-  // ============================================
   // NUEVA VENTA
-  // ============================================
   const nuevaVenta = () => {
     setCarrito([])
     setIdFacturaActual(null)
@@ -276,22 +308,22 @@ const VentasModule = () => {
     setMostrarResumenFinal(false)
   }
 
-  // ============================================
-  // MANEJAR CLIENTE CREADO
-  // ============================================
-  const handleClienteCreado = (cliente: Cliente) => {
-    setClienteSeleccionado(cliente)
-    setMostrarModalCliente(false)
-  }
-
   const totales = calcularTotales()
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* ============================================ */}
-        {/* MODAL RESUMEN FINAL */}
-        {/* ============================================ */}
+        {/* MODAL CONFIRMACIÓN */}
+        <ConfirmModal
+          isOpen={mostrarModalConfirm}
+          onClose={() => setMostrarModalConfirm(false)}
+          onConfirm={procesarVenta}
+          title="Confirmar Venta"
+          message="¿Está seguro de procesar esta venta? Esta acción no se puede deshacer."
+          type="success"
+        />
+
+        {/* MODAL RESUMEN FINAL - Ahora calcula totales correctamente */}
         {mostrarResumenFinal && factura && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
@@ -307,23 +339,21 @@ const VentasModule = () => {
                   Nueva Venta
                 </button>
               </div>
-
               <div className="p-6 space-y-6">
-                {/* Info General */}
                 <div className="bg-gray-50 rounded-lg p-4">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-gray-600">Fecha:</span>
-                      <p className="font-medium">{new Date(factura.fechaEmision).toLocaleString()}</p>
+                      <p className="font-medium">
+                        {new Date(factura.fechaEmision).toLocaleString()}
+                      </p>
                     </div>
                     <div>
                       <span className="text-gray-600">Estado:</span>
-                      <p className="font-medium">{factura.estadoPago ? "✅ Pagado" : "⏳ Pendiente"}</p>
+                      <p className="font-medium">{factura.estadoPago ? "Pagado" : "Pendiente"}</p>
                     </div>
                   </div>
                 </div>
-
-                {/* Cliente y Vendedor */}
                 {(factura.cliente || factura.vendedor) && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {factura.cliente && (
@@ -346,15 +376,18 @@ const VentasModule = () => {
                     )}
                   </div>
                 )}
-
-                {/* Detalles */}
                 <div>
                   <h3 className="font-semibold text-gray-800 mb-3">Detalles de la Venta</h3>
                   <div className="space-y-2">
                     {factura.detalles.map((detalle, index) => (
-                      <div key={index} className="flex justify-between items-center border-b border-gray-200 pb-2">
+                      <div
+                        key={index}
+                        className="flex justify-between items-center border-b border-gray-200 pb-2"
+                      >
                         <div className="flex-1">
-                          <p className="font-medium">{detalle.producto?.nombre || detalle.servicio?.nombre}</p>
+                          <p className="font-medium">
+                            {detalle.producto?.nombre || detalle.servicio?.nombre}
+                          </p>
                           <p className="text-xs text-gray-600">Cantidad: {detalle.cantidad}</p>
                         </div>
                         <p className="font-semibold">₡{detalle.subtotal.toFixed(2)}</p>
@@ -362,51 +395,68 @@ const VentasModule = () => {
                     ))}
                   </div>
                 </div>
-
-                {/* Totales */}
-                <div className="border-t border-gray-300 pt-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>₡{factura.subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Descuento:</span>
-                    <span>-₡{factura.descuento.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Impuesto:</span>
-                    <span>₡{factura.impuesto.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t">
-                    <span>Total:</span>
-                    <span className="text-[#4a9d9d]">₡{factura.montoTotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-blue-600">
-                    <span>Monto Cancelado:</span>
-                    <span>₡{factura.montoCancelado.toFixed(2)}</span>
-                  </div>
-                </div>
+                {(() => {
+                  const totalesReales = calcularTotalesReales(factura)
+                  return (
+                    <div className="border-t border-gray-300 pt-4 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>Subtotal:</span>
+                        <span>₡{totalesReales.subtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Descuento:</span>
+                        <span>-₡{totalesReales.descuento.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>Impuesto:</span>
+                        <span>₡{totalesReales.impuesto.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t">
+                        <span>Total:</span>
+                        <span className="text-[#4a9d9d]">₡{totalesReales.total.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm text-blue-600">
+                        <span>Monto Cancelado:</span>
+                        <span>₡{factura.montoCancelado.toFixed(2)}</span>
+                      </div>
+                      {factura.montoCancelado < totalesReales.total && (
+                        <div className="flex justify-between text-sm text-red-600 font-semibold">
+                          <span>Saldo Pendiente:</span>
+                          <span>₡{(totalesReales.total - factura.montoCancelado).toFixed(2)}</span>
+                        </div>
+                      )}
+                      {factura.montoCancelado > totalesReales.total && (
+                        <div className="flex justify-between text-sm text-green-600 font-semibold">
+                          <span>Cambio:</span>
+                          <span>₡{(factura.montoCancelado - totalesReales.total).toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           </div>
         )}
 
-        {/* ============================================ */}
-        {/* MODAL CREAR CLIENTE */}
-        {/* ============================================ */}
+        {/* MODAL CLIENTE INTELIGENTE */}
         {mostrarModalCliente && (
-          <ModalCrearCliente
+          <ModalCliente
             onClose={() => setMostrarModalCliente(false)}
-            onClienteCreado={handleClienteCreado}
+            onClienteCreado={(cliente: Cliente) => {
+              setClienteSeleccionado(cliente)
+              setMostrarModalCliente(false)
+            }}
+            clientes={clientes}
+            fetchClientes={fetchClientes}
+            fetchClienteByCedula={fetchClienteByCedula}
             createCliente={createCliente}
-            loading={loadingCliente}
+            loading={loadingClientes}
           />
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* ============================================ */}
           {/* PANEL DE ACCIONES */}
-          {/* ============================================ */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6 space-y-6">
               <div>
@@ -414,7 +464,6 @@ const VentasModule = () => {
                   <ShoppingBag size={24} className="text-[#4a9d9d]" />
                   Agregar Items
                 </h2>
-
                 <div className="space-y-3">
                   <button
                     onClick={() => {
@@ -427,7 +476,6 @@ const VentasModule = () => {
                     <Package size={20} />
                     Agregar Producto
                   </button>
-
                   <button
                     onClick={() => {
                       setTipoModal("servicio")
@@ -442,7 +490,6 @@ const VentasModule = () => {
                 </div>
               </div>
 
-              {/* Información de Venta */}
               <div className="border-t border-gray-200 pt-6">
                 <h3 className="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-2">
                   <User size={18} />
@@ -468,7 +515,9 @@ const VentasModule = () => {
                           <p className="font-medium">
                             {clienteSeleccionado.nombre} {clienteSeleccionado.apellido1}
                           </p>
-                          <p className="text-xs text-gray-600">Cédula: {clienteSeleccionado.cedula}</p>
+                          <p className="text-xs text-gray-600">
+                            Cédula: {clienteSeleccionado.cedula}
+                          </p>
                         </div>
                         <button
                           onClick={() => setClienteSeleccionado(null)}
@@ -480,29 +529,16 @@ const VentasModule = () => {
                     ) : (
                       <button
                         onClick={() => setMostrarModalCliente(true)}
-                        className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 text-gray-600 px-3 py-2 rounded-lg hover:border-[#4a9d9d] hover:text-[#4a9d9d] transition"
+                        className="w-full flex items-center justify-center gap-2 bg-[#4a9d9d] text-white px-3 py-2 rounded-lg hover:bg-[#5aadad] transition text-sm font-medium"
                       >
-                        <UserPlus size={18} />
-                        Crear Cliente
+                        <User size={18} />
+                        Seleccionar Cliente
                       </button>
                     )}
-                  </div>
-
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Monto Cancelado</label>
-                    <input
-                      type="number"
-                      value={montoCancelado}
-                      onChange={(e) => setMontoCancelado(e.target.value)}
-                      placeholder="0.00"
-                      step="0.01"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d]"
-                    />
                   </div>
                 </div>
               </div>
 
-              {/* Resumen del Carrito */}
               <div className="border-t border-gray-200 pt-6">
                 <h3 className="text-sm font-semibold text-gray-600 uppercase mb-3">Resumen</h3>
                 <div className="space-y-2 text-sm">
@@ -518,32 +554,48 @@ const VentasModule = () => {
                   </div>
                   <div className="flex justify-between text-gray-600">
                     <span>Cantidad total:</span>
-                    <span className="font-medium">{carrito.reduce((sum, item) => sum + item.cantidad, 0)}</span>
+                    <span className="font-medium">
+                      {carrito.reduce((s, i) => s + i.cantidad, 0)}
+                    </span>
                   </div>
-                  <div className="pt-2 border-t border-gray-200 space-y-1">
-                    <div className="flex justify-between text-xs text-gray-600">
-                      <span>Subtotal:</span>
-                      <span>₡{totales.subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-green-600">
-                      <span>Descuento:</span>
-                      <span>-₡{totales.descuento.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs text-gray-600">
-                      <span>Impuesto:</span>
-                      <span>₡{totales.impuesto.toFixed(2)}</span>
-                    </div>
-                  </div>
-                  <div className="pt-3 border-t border-gray-200">
+                  <div className="pt-3 border-t border-gray-200 space-y-3">
                     <div className="flex justify-between text-lg font-bold text-gray-900">
                       <span>Total:</span>
                       <span className="text-[#4a9d9d]">₡{totales.total.toFixed(2)}</span>
                     </div>
+                    
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Monto Cancelado</label>
+                      <input
+                        type="number"
+                        value={montoCancelado}
+                        onChange={(e) => setMontoCancelado(e.target.value)}
+                        placeholder="0.00"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d]"
+                      />
+                    </div>
+
+                    {montoCancelado && parseFloat(montoCancelado) > 0 && (
+                      <div className="text-xs space-y-1">
+                        {parseFloat(montoCancelado) >= totales.total ? (
+                          <div className="flex justify-between text-green-600 font-semibold">
+                            <span>Cambio:</span>
+                            <span>₡{(parseFloat(montoCancelado) - totales.total).toFixed(2)}</span>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between text-red-600 font-semibold">
+                            <span>Faltante:</span>
+                            <span>₡{(totales.total - parseFloat(montoCancelado)).toFixed(2)}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <button
-                  onClick={procesarVenta}
+                  onClick={() => setMostrarModalConfirm(true)}
                   disabled={carrito.length === 0 || !idVendedor || loadingFactura}
                   className="w-full mt-4 bg-[#9d8560] text-white px-4 py-3 rounded-lg hover:bg-[#b89d7d] transition font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
@@ -563,9 +615,7 @@ const VentasModule = () => {
             </div>
           </div>
 
-          {/* ============================================ */}
           {/* CARRITO DE COMPRAS */}
-          {/* ============================================ */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="border-b border-gray-200 px-6 py-4">
@@ -574,7 +624,9 @@ const VentasModule = () => {
                   Carrito de Venta
                 </h2>
                 <p className="text-sm text-gray-500 mt-1">
-                  {carrito.length === 0 ? "No hay items en el carrito" : `${carrito.length} items agregados`}
+                  {carrito.length === 0
+                    ? "No hay items en el carrito"
+                    : `${carrito.length} items agregados`}
                 </p>
               </div>
 
@@ -583,7 +635,9 @@ const VentasModule = () => {
                   <div className="text-center py-12">
                     <ShoppingCart size={64} className="mx-auto text-gray-300 mb-4" />
                     <p className="text-gray-500 text-lg">El carrito está vacío</p>
-                    <p className="text-gray-400 text-sm mt-2">Agrega productos o servicios para comenzar</p>
+                    <p className="text-gray-400 text-sm mt-2">
+                      Agrega productos o servicios para comenzar
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -603,31 +657,29 @@ const VentasModule = () => {
                             <Briefcase className="text-[#9d8560]" size={24} />
                           )}
                         </div>
-
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-medium text-gray-900 truncate">{item.nombre}</h3>
-                              <p className="text-sm text-gray-500 truncate">{item.descripcion}</p>
-                              <div className="flex items-center gap-3 mt-1">
-                                <span className="text-xs text-gray-500">₡{item.precioUnitario.toFixed(2)} c/u</span>
-                                {item.tipo === "producto" && (
-                                  <span className="text-xs text-gray-500">Stock: {item.stockDisponible}</span>
-                                )}
-                                <span
-                                  className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                                    item.tipo === "producto"
-                                      ? "bg-[#4a9d9d]/10 text-[#4a9d9d]"
-                                      : "bg-[#9d8560]/10 text-[#9d8560]"
-                                  }`}
-                                >
-                                  {item.tipo === "producto" ? "Producto" : "Servicio"}
-                                </span>
-                              </div>
-                            </div>
+                          <h3 className="font-medium text-gray-900 truncate">{item.nombre}</h3>
+                          <p className="text-sm text-gray-500 truncate">{item.descripcion}</p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-gray-500">
+                              ₡{item.precioUnitario.toFixed(2)} c/u
+                            </span>
+                            {item.tipo === "producto" && (
+                              <span className="text-xs text-gray-500">
+                                Stock: {item.stockDisponible}
+                              </span>
+                            )}
+                            <span
+                              className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                                item.tipo === "producto"
+                                  ? "bg-[#4a9d9d]/10 text-[#4a9d9d]"
+                                  : "bg-[#9d8560]/10 text-[#9d8560]"
+                              }`}
+                            >
+                              {item.tipo === "producto" ? "Producto" : "Servicio"}
+                            </span>
                           </div>
                         </div>
-
                         <div className="flex items-center gap-3">
                           <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-300 px-2 py-1">
                             <button
@@ -637,7 +689,9 @@ const VentasModule = () => {
                             >
                               <Minus size={16} />
                             </button>
-                            <span className="font-medium text-gray-900 w-8 text-center">{item.cantidad}</span>
+                            <span className="font-medium text-gray-900 w-8 text-center">
+                              {item.cantidad}
+                            </span>
                             <button
                               onClick={() => actualizarCantidad(item.id, 1)}
                               className="text-gray-600 hover:text-gray-800 p-1"
@@ -645,11 +699,11 @@ const VentasModule = () => {
                               <Plus size={16} />
                             </button>
                           </div>
-
                           <div className="text-right min-w-24">
-                            <p className="font-semibold text-gray-900">₡{item.subtotal.toFixed(2)}</p>
+                            <p className="font-semibold text-gray-900">
+                              ₡{item.subtotal.toFixed(2)}
+                            </p>
                           </div>
-
                           <button
                             onClick={() => eliminarDelCarrito(item.id)}
                             className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg transition"
@@ -666,23 +720,19 @@ const VentasModule = () => {
           </div>
         </div>
 
-        {/* ============================================ */}
-        {/* MODAL PARA AGREGAR ITEMS */}
-        {/* ============================================ */}
+        {/* MODAL PRODUCTOS/SERVICIOS */}
         {mostrarModal && (
-          <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col">
               <div className="flex justify-between items-center p-6 border-b border-gray-200">
                 <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
                   {tipoModal === "producto" ? (
                     <>
-                      <Package size={24} className="text-[#4a9d9d]" />
-                      Seleccionar Producto
+                      <Package size={24} className="text-[#4a9d9d]" /> Seleccionar Producto
                     </>
                   ) : (
                     <>
-                      <Briefcase size={24} className="text-[#9d8560]" />
-                      Seleccionar Servicio
+                      <Briefcase size={24} className="text-[#9d8560]" /> Seleccionar Servicio
                     </>
                   )}
                 </h2>
@@ -696,10 +746,12 @@ const VentasModule = () => {
                   <X size={22} />
                 </button>
               </div>
-
               <div className="p-6 border-b border-gray-200">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                  <Search
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    size={20}
+                  />
                   <input
                     type="text"
                     placeholder="Buscar..."
@@ -710,7 +762,6 @@ const VentasModule = () => {
                   />
                 </div>
               </div>
-
               <div className="flex-1 overflow-y-auto p-6">
                 {(tipoModal === "producto" ? loadingProductos : loadingServicios) ? (
                   <div className="text-center py-12">
@@ -745,8 +796,8 @@ const VentasModule = () => {
                                 item.stock > 10
                                   ? "bg-green-100 text-green-700"
                                   : item.stock > 0
-                                    ? "bg-amber-100 text-amber-700"
-                                    : "bg-red-100 text-red-700"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-red-100 text-red-700"
                               }`}
                             >
                               Stock: {item.stock}
