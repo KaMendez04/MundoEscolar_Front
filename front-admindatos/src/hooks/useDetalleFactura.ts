@@ -58,12 +58,30 @@ export const useDetalleFactura = () => {
     }
   };
 
+  // Eliminar detalle
+  const deleteDetalle = async (id: number): Promise<boolean> => {
+    setLoading(true);
+    setError(null);
+    try {
+      await detalleFacturaService.deleteDetalle(id);
+      return true;
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || err.message || 'Error al eliminar detalle';
+      setError(errorMsg);
+      console.error('Error deleting detalle:', err);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     error,
     addDetalleFactura,
     fetchDetalleById,
     updateDetalle,
+    deleteDetalle,
     setError,
   };
 };

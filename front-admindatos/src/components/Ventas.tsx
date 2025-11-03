@@ -1,5 +1,5 @@
 // components/VentasModule.tsx
-import { useState, useEffect, useCallback } from "react"
+import { useState } from "react"
 import {
   ShoppingCart,
   Plus,
@@ -20,14 +20,14 @@ import { useServicios } from "../hooks/useServicios"
 import { useFacturas } from "../hooks/useFacturas"
 import { useDetalleFactura } from "../hooks/useDetalleFactura"
 import { useClientes } from "../hooks/useClientes"
-import type { Cliente, CreateClienteDto } from "../types/cliente"
+import { useMiVendedor } from "../hooks/useMiVendedor"
+import type { Cliente } from "../types/cliente"
 import ModalCliente from "../components/Ventas/ModalCrearCliente"
 
 type ItemVenta = {
   id: string
   tipo: "producto" | "servicio"
   idItem: number
-  idDetalleFactura?: number
   nombre: string
   descripcion: string
   precioUnitario: number
@@ -96,6 +96,7 @@ const VentasModule = () => {
     createCliente,
     loading: loadingClientes,
   } = useClientes()
+  const { vendedor, loading: loadingVendedor, error: errorVendedor } = useMiVendedor()
 
   const [carrito, setCarrito] = useState<ItemVenta[]>([])
   const [mostrarModal, setMostrarModal] = useState(false)
@@ -105,7 +106,6 @@ const VentasModule = () => {
   const [searchTerm, setSearchTerm] = useState("")
   const [idFacturaActual, setIdFacturaActual] = useState<number | null>(null)
   const [numeroFactura, setNumeroFactura] = useState<number | null>(null)
-  const [idVendedor, setIdVendedor] = useState<string>("")
   const [clienteSeleccionado, setClienteSeleccionado] = useState<Cliente | null>(null)
   const [montoCancelado, setMontoCancelado] = useState<string>("")
   const [mostrarResumenFinal, setMostrarResumenFinal] = useState(false)
@@ -123,19 +123,8 @@ const VentasModule = () => {
           s.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
       )
 
-  // INICIALIZAR FACTURA
-  const inicializarFactura = async () => {
-    if (!idFacturaActual) {
-      const nuevaFactura = await createFactura()
-      if (nuevaFactura) {
-        setIdFacturaActual(nuevaFactura.idFactura)
-        setNumeroFactura(nuevaFactura.numeroFactura)
-      }
-    }
-  }
-
-  // AGREGAR AL CARRITO
-  const agregarAlCarrito = async (item: any, tipo: "producto" | "servicio") => {
+  // AGREGAR AL CARRITO - Solo frontend, sin crear detalles aún
+  const agregarAlCarrito = (item: any, tipo: "producto" | "servicio") => {
     const itemId = `${tipo}-${tipo === "producto" ? item.idProducto : item.idServicio}`
     const existente = carrito.find((i) => i.id === itemId)
 
@@ -144,27 +133,22 @@ const VentasModule = () => {
       return
     }
 
-    if (!idFacturaActual) await inicializarFactura()
+    const precioUnitario = item.monto ?? item.precio ?? 0
+    const impuesto = item.impuesto ?? 0
+    const descuento = item.descuento ?? 0
 
     if (existente) {
+      // Incrementar cantidad
       const nuevaCantidad = existente.cantidad + 1
       const nuevoSubtotal = nuevaCantidad * existente.precioUnitario
+      
       setCarrito(
         carrito.map((i) =>
           i.id === itemId ? { ...i, cantidad: nuevaCantidad, subtotal: nuevoSubtotal } : i
         )
       )
-
-      if (idFacturaActual) {
-        await addDetalleFactura({
-          idFactura: idFacturaActual,
-          cantidad: 1,
-          idProducto: tipo === "producto" ? item.idProducto : null,
-          idServicio: tipo === "servicio" ? item.idServicio : null,
-        })
-      }
     } else {
-      const precioUnitario = item.monto ?? item.precio ?? 0
+      // Nuevo item en el carrito
       const nuevoItem: ItemVenta = {
         id: itemId,
         tipo,
@@ -174,32 +158,24 @@ const VentasModule = () => {
         precioUnitario,
         cantidad: 1,
         subtotal: precioUnitario,
-        impuesto: 0,
-        descuento: 0,
+        impuesto,
+        descuento,
         stockDisponible: tipo === "producto" ? item.stock : undefined,
       }
       setCarrito([...carrito, nuevoItem])
-
-      if (idFacturaActual) {
-        await addDetalleFactura({
-          idFactura: idFacturaActual,
-          cantidad: 1,
-          idProducto: tipo === "producto" ? item.idProducto : null,
-          idServicio: tipo === "servicio" ? item.idServicio : null,
-        })
-      }
     }
 
     setMostrarModal(false)
     setSearchTerm("")
   }
 
-  // ACTUALIZAR CANTIDAD
-  const actualizarCantidad = async (itemId: string, cambio: number) => {
+  // ACTUALIZAR CANTIDAD - Solo frontend
+  const actualizarCantidad = (itemId: string, cambio: number) => {
     const item = carrito.find((i) => i.id === itemId)
     if (!item) return
 
     const nuevaCantidad = Math.max(1, item.cantidad + cambio)
+    
     if (item.tipo === "producto" && item.stockDisponible && nuevaCantidad > item.stockDisponible) {
       alert("No hay suficiente stock disponible")
       return
@@ -212,35 +188,30 @@ const VentasModule = () => {
           : i
       )
     )
-
-    if (idFacturaActual && cambio > 0) {
-      await addDetalleFactura({
-        idFactura: idFacturaActual,
-        cantidad: cambio,
-        idProducto: item.tipo === "producto" ? item.idItem : null,
-        idServicio: item.tipo === "servicio" ? item.idItem : null,
-      })
-    }
   }
 
-  // ELIMINAR ITEM
+  // ELIMINAR ITEM - Solo frontend
   const eliminarDelCarrito = (itemId: string) => {
     setCarrito(carrito.filter((item) => item.id !== itemId))
   }
 
-  // CALCULAR TOTALES - Ahora también suma impuestos y descuentos de los detalles reales
+  // CALCULAR TOTALES ESTIMADOS - Basados en el carrito frontend
   const calcularTotales = () => {
     let subtotal = 0
     let totalImpuesto = 0
     let totalDescuento = 0
     
     carrito.forEach((item) => {
-      subtotal += item.subtotal
+      const itemSubtotal = item.cantidad * item.precioUnitario
+      const itemImpuesto = (itemSubtotal * item.impuesto) / 100
+      const itemDescuento = (itemSubtotal * item.descuento) / 100
+      
+      subtotal += itemSubtotal
+      totalImpuesto += itemImpuesto
+      totalDescuento += itemDescuento
     })
     
-    // Estimación de impuestos y descuentos (se recalcularán en el backend)
-    // Pero los mostramos para que el usuario tenga una idea
-    const total = subtotal
+    const total = subtotal + totalImpuesto - totalDescuento
     
     return { subtotal, impuesto: totalImpuesto, descuento: totalDescuento, total }
   }
@@ -263,37 +234,76 @@ const VentasModule = () => {
     return { subtotal, impuesto: totalImpuesto, descuento: totalDescuento, total }
   }
 
-  // PROCESAR VENTA - Corregido para recalcular totales después de obtener la factura
+  // PROCESAR VENTA - Crear factura, agregar todos los detalles y actualizar
   const procesarVenta = async () => {
     if (carrito.length === 0) return alert("El carrito está vacío")
-    if (!idVendedor) return alert("Debe ingresar el ID del vendedor")
-    if (!idFacturaActual) return alert("No se ha creado una factura")
+    if (!vendedor) return alert("No se pudo obtener la información del vendedor")
 
     try {
-      const totales = calcularTotales()
+      // 1. Crear factura si no existe
+      let facturaId = idFacturaActual
+      if (!facturaId) {
+        const nuevaFactura = await createFactura()
+        if (!nuevaFactura) {
+          alert("Error al crear la factura")
+          return
+        }
+        facturaId = nuevaFactura.idFactura
+        setIdFacturaActual(nuevaFactura.idFactura)
+        setNumeroFactura(nuevaFactura.numeroFactura)
+      }
+
+      // 2. Agregar todos los detalles al carrito
+      console.log("🛒 Agregando detalles de carrito:", carrito)
+      
+      for (const item of carrito) {
+        const success = await addDetalleFactura({
+          idFactura: facturaId,
+          cantidad: item.cantidad, // Cantidad total del item
+          idProducto: item.tipo === "producto" ? item.idItem : null,
+          idServicio: item.tipo === "servicio" ? item.idItem : null,
+        })
+
+        if (!success) {
+          alert(`Error al agregar ${item.nombre} a la factura`)
+          return
+        }
+      }
+
+      // 3. Esperar un momento para que el backend procese los detalles
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // 4. Actualizar la factura con vendedor, cliente y monto
       const montoIngresado = montoCancelado ? parseFloat(montoCancelado) : 0
 
-      // Primero actualizar la factura con vendedor y cliente
-      const success = await updateFactura({
-        idFactura: idFacturaActual,
-        idVendedor: parseInt(idVendedor),
+      console.log("💰 Actualizando factura:", {
+        idFactura: facturaId,
+        idVendedor: vendedor.idVendedor,
         idCliente: clienteSeleccionado?.idCliente || null,
         montoCancelado: montoIngresado,
-        estadoPago: true, // Siempre marcamos como pagado al procesar
+        estadoPago: true,
+      })
+
+      const success = await updateFactura({
+        idFactura: facturaId,
+        idVendedor: vendedor.idVendedor,
+        idCliente: clienteSeleccionado?.idCliente || null,
+        montoCancelado: montoIngresado,
+        estadoPago: true,
       })
 
       if (success) {
-        // Esperar a que el backend procese
+        // 5. Esperar y recargar la factura completa
         setTimeout(async () => {
-          await fetchFacturaById(idFacturaActual)
+          await fetchFacturaById(facturaId!)
           setMostrarResumenFinal(true)
-        }, 800)
+        }, 1000)
       } else {
         alert("Error al procesar la venta")
       }
     } catch (error: any) {
-      console.error("Error procesando venta:", error)
-      alert(`Error al procesar la venta: ${error.message || 'Error desconocido'}`)
+      console.error("❌ Error procesando venta:", error)
+      alert(`Error al procesar la venta: ${error.response?.data?.message || error.message || 'Error desconocido'}`)
     }
   }
 
@@ -302,13 +312,42 @@ const VentasModule = () => {
     setCarrito([])
     setIdFacturaActual(null)
     setNumeroFactura(null)
-    setIdVendedor("")
     setClienteSeleccionado(null)
     setMontoCancelado("")
     setMostrarResumenFinal(false)
   }
 
   const totales = calcularTotales()
+
+  // Mostrar error si no se puede cargar el vendedor
+  if (errorVendedor) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+              <AlertCircle className="text-red-600" size={24} />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">Error de Autenticación</h2>
+          </div>
+          <p className="text-gray-600 mb-4">{errorVendedor}</p>
+          <p className="text-sm text-gray-500">Por favor, inicie sesión nuevamente.</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Mostrar loading mientras carga el vendedor
+  if (loadingVendedor) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-[#4a9d9d] border-t-transparent"></div>
+          <p className="mt-4 text-gray-600">Cargando información del vendedor...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -323,7 +362,7 @@ const VentasModule = () => {
           type="success"
         />
 
-        {/* MODAL RESUMEN FINAL - Ahora calcula totales correctamente */}
+        {/* MODAL RESUMEN FINAL */}
         {mostrarResumenFinal && factura && (
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
@@ -388,7 +427,10 @@ const VentasModule = () => {
                           <p className="font-medium">
                             {detalle.producto?.nombre || detalle.servicio?.nombre}
                           </p>
-                          <p className="text-xs text-gray-600">Cantidad: {detalle.cantidad}</p>
+                          <p className="text-xs text-gray-600">
+                            Cantidad: {detalle.cantidad} x ₡
+                            {((detalle.subtotal / detalle.cantidad) || 0).toFixed(2)}
+                          </p>
                         </div>
                         <p className="font-semibold">₡{detalle.subtotal.toFixed(2)}</p>
                       </div>
@@ -403,14 +445,18 @@ const VentasModule = () => {
                         <span>Subtotal:</span>
                         <span>₡{totalesReales.subtotal.toFixed(2)}</span>
                       </div>
-                      <div className="flex justify-between text-sm text-green-600">
-                        <span>Descuento:</span>
-                        <span>-₡{totalesReales.descuento.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Impuesto:</span>
-                        <span>₡{totalesReales.impuesto.toFixed(2)}</span>
-                      </div>
+                      {totalesReales.descuento > 0 && (
+                        <div className="flex justify-between text-sm text-green-600">
+                          <span>Descuento:</span>
+                          <span>-₡{totalesReales.descuento.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {totalesReales.impuesto > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span>Impuesto:</span>
+                          <span>₡{totalesReales.impuesto.toFixed(2)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t">
                         <span>Total:</span>
                         <span className="text-[#4a9d9d]">₡{totalesReales.total.toFixed(2)}</span>
@@ -493,22 +539,27 @@ const VentasModule = () => {
               <div className="border-t border-gray-200 pt-6">
                 <h3 className="text-sm font-semibold text-gray-600 uppercase mb-3 flex items-center gap-2">
                   <User size={18} />
-                  Datos de Venta
+                  Información de Venta
                 </h3>
                 <div className="space-y-3">
+                  {/* INFORMACIÓN DEL VENDEDOR AUTENTICADO */}
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">ID Vendedor *</label>
-                    <input
-                      type="number"
-                      value={idVendedor}
-                      onChange={(e) => setIdVendedor(e.target.value)}
-                      placeholder="Ej: 1"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d]"
-                    />
+                    <label className="block text-xs text-gray-600 mb-1">Vendedor</label>
+                    <div className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
+                      <div className="text-sm">
+                        <p className="font-medium">
+                          {vendedor?.nombre} {vendedor?.apellido1}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          Cédula: {vendedor?.cedula}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
+                  {/* SELECCIÓN DE CLIENTE */}
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Cliente</label>
+                    <label className="block text-xs text-gray-600 mb-1">Cliente (Opcional)</label>
                     {clienteSeleccionado ? (
                       <div className="flex items-center justify-between bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
                         <div className="text-sm">
@@ -542,12 +593,6 @@ const VentasModule = () => {
               <div className="border-t border-gray-200 pt-6">
                 <h3 className="text-sm font-semibold text-gray-600 uppercase mb-3">Resumen</h3>
                 <div className="space-y-2 text-sm">
-                  {numeroFactura && (
-                    <div className="flex justify-between text-gray-600 mb-2">
-                      <span>Factura #:</span>
-                      <span className="font-medium text-[#4a9d9d]">{numeroFactura}</span>
-                    </div>
-                  )}
                   <div className="flex justify-between text-gray-600">
                     <span>Items:</span>
                     <span className="font-medium">{carrito.length}</span>
@@ -558,8 +603,24 @@ const VentasModule = () => {
                       {carrito.reduce((s, i) => s + i.cantidad, 0)}
                     </span>
                   </div>
-                  <div className="pt-3 border-t border-gray-200 space-y-3">
-                    <div className="flex justify-between text-lg font-bold text-gray-900">
+                  <div className="pt-3 border-t border-gray-200 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal:</span>
+                      <span>₡{totales.subtotal.toFixed(2)}</span>
+                    </div>
+                    {totales.descuento > 0 && (
+                      <div className="flex justify-between text-sm text-green-600">
+                        <span>Descuento:</span>
+                        <span>-₡{totales.descuento.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {totales.impuesto > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Impuesto:</span>
+                        <span>₡{totales.impuesto.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t">
                       <span>Total:</span>
                       <span className="text-[#4a9d9d]">₡{totales.total.toFixed(2)}</span>
                     </div>
@@ -594,9 +655,9 @@ const VentasModule = () => {
                   </div>
                 </div>
 
-                <button
+               <button
                   onClick={() => setMostrarModalConfirm(true)}
-                  disabled={carrito.length === 0 || !idVendedor || loadingFactura}
+                  disabled={carrito.length === 0 || loadingFactura}
                   className="w-full mt-4 bg-[#9d8560] text-white px-4 py-3 rounded-lg hover:bg-[#b89d7d] transition font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loadingFactura ? (
@@ -667,6 +728,16 @@ const VentasModule = () => {
                             {item.tipo === "producto" && (
                               <span className="text-xs text-gray-500">
                                 Stock: {item.stockDisponible}
+                              </span>
+                            )}
+                            {item.impuesto > 0 && (
+                              <span className="text-xs text-blue-600">
+                                IVA: {item.impuesto}%
+                              </span>
+                            )}
+                            {item.descuento > 0 && (
+                              <span className="text-xs text-green-600">
+                                Desc: {item.descuento}%
                               </span>
                             )}
                             <span
@@ -789,7 +860,7 @@ const VentasModule = () => {
                           </span>
                         </div>
                         <p className="text-sm text-gray-600 mb-3">{item.descripcion}</p>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
                           {tipoModal === "producto" && (
                             <span
                               className={`text-xs px-2 py-1 rounded-full ${
@@ -801,6 +872,16 @@ const VentasModule = () => {
                               }`}
                             >
                               Stock: {item.stock}
+                            </span>
+                          )}
+                          {item.impuesto > 0 && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                              IVA: {item.impuesto}%
+                            </span>
+                          )}
+                          {item.descuento > 0 && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
+                              Desc: {item.descuento}%
                             </span>
                           )}
                           <button className="text-sm text-[#4a9d9d] hover:text-[#5aadad] font-medium ml-auto">
