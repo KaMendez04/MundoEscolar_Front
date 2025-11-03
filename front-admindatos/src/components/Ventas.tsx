@@ -14,6 +14,7 @@ import {
   Receipt,
   AlertCircle,
   CheckCircle,
+  XCircle,
 } from "lucide-react"
 import { useProductos } from "../hooks/useProdutos"
 import { useServicios } from "../hooks/useServicios"
@@ -102,6 +103,7 @@ const VentasModule = () => {
   const [mostrarModal, setMostrarModal] = useState(false)
   const [mostrarModalCliente, setMostrarModalCliente] = useState(false)
   const [mostrarModalConfirm, setMostrarModalConfirm] = useState(false)
+  const [mostrarModalCancelar, setMostrarModalCancelar] = useState(false)
   const [tipoModal, setTipoModal] = useState<"producto" | "servicio">("producto")
   const [searchTerm, setSearchTerm] = useState("")
   const [idFacturaActual, setIdFacturaActual] = useState<number | null>(null)
@@ -123,7 +125,7 @@ const VentasModule = () => {
           s.descripcion.toLowerCase().includes(searchTerm.toLowerCase())
       )
 
-  // AGREGAR AL CARRITO - Solo frontend, sin crear detalles aún
+  // AGREGAR AL CARRITO
   const agregarAlCarrito = (item: any, tipo: "producto" | "servicio") => {
     const itemId = `${tipo}-${tipo === "producto" ? item.idProducto : item.idServicio}`
     const existente = carrito.find((i) => i.id === itemId)
@@ -138,7 +140,6 @@ const VentasModule = () => {
     const descuento = item.descuento ?? 0
 
     if (existente) {
-      // Incrementar cantidad
       const nuevaCantidad = existente.cantidad + 1
       const nuevoSubtotal = nuevaCantidad * existente.precioUnitario
       
@@ -148,7 +149,6 @@ const VentasModule = () => {
         )
       )
     } else {
-      // Nuevo item en el carrito
       const nuevoItem: ItemVenta = {
         id: itemId,
         tipo,
@@ -169,7 +169,7 @@ const VentasModule = () => {
     setSearchTerm("")
   }
 
-  // ACTUALIZAR CANTIDAD - Solo frontend
+  // ACTUALIZAR CANTIDAD
   const actualizarCantidad = (itemId: string, cambio: number) => {
     const item = carrito.find((i) => i.id === itemId)
     if (!item) return
@@ -190,33 +190,38 @@ const VentasModule = () => {
     )
   }
 
-  // ELIMINAR ITEM - Solo frontend
+  // ELIMINAR ITEM
   const eliminarDelCarrito = (itemId: string) => {
     setCarrito(carrito.filter((item) => item.id !== itemId))
   }
 
-  // CALCULAR TOTALES ESTIMADOS - Basados en el carrito frontend
+  // CALCULAR TOTALES DEL CARRITO - EXACTAMENTE COMO EL BACKEND
   const calcularTotales = () => {
     let subtotal = 0
     let totalImpuesto = 0
     let totalDescuento = 0
     
     carrito.forEach((item) => {
+      // El backend calcula así:
+      // 1. Subtotal = precio × cantidad
       const itemSubtotal = item.cantidad * item.precioUnitario
-      const itemImpuesto = (itemSubtotal * item.impuesto) / 100
+      
+      // 2. Descuento e Impuesto se calculan sobre el subtotal ORIGINAL
       const itemDescuento = (itemSubtotal * item.descuento) / 100
+      const itemImpuesto = (itemSubtotal * item.impuesto) / 100
       
       subtotal += itemSubtotal
-      totalImpuesto += itemImpuesto
       totalDescuento += itemDescuento
+      totalImpuesto += itemImpuesto
     })
     
-    const total = subtotal + totalImpuesto - totalDescuento
+    // Total = Subtotal - Descuento + Impuesto
+    const total = subtotal - totalDescuento + totalImpuesto
     
     return { subtotal, impuesto: totalImpuesto, descuento: totalDescuento, total }
   }
 
-  // CALCULAR TOTALES REALES desde la factura del backend
+  // CALCULAR TOTALES REALES desde la factura
   const calcularTotalesReales = (facturaData: any) => {
     let subtotal = 0
     let totalImpuesto = 0
@@ -234,32 +239,35 @@ const VentasModule = () => {
     return { subtotal, impuesto: totalImpuesto, descuento: totalDescuento, total }
   }
 
-  // PROCESAR VENTA - Crear factura, agregar todos los detalles y actualizar
+  // PROCESAR VENTA - CON VALIDACIÓN DE MONTO
   const procesarVenta = async () => {
     if (carrito.length === 0) return alert("El carrito está vacío")
     if (!vendedor) return alert("No se pudo obtener la información del vendedor")
 
-    try {
-      // 1. Crear factura si no existe
-      let facturaId = idFacturaActual
-      if (!facturaId) {
-        const nuevaFactura = await createFactura()
-        if (!nuevaFactura) {
-          alert("Error al crear la factura")
-          return
-        }
-        facturaId = nuevaFactura.idFactura
-        setIdFacturaActual(nuevaFactura.idFactura)
-        setNumeroFactura(nuevaFactura.numeroFactura)
-      }
+    // Calcular el total estimado
+    const totalesEstimados = calcularTotales()
+    const montoIngresado = montoCancelado && parseFloat(montoCancelado) > 0 
+      ? parseFloat(montoCancelado) 
+      : 0
 
-      // 2. Agregar todos los detalles al carrito
-      console.log("🛒 Agregando detalles de carrito:", carrito)
+    try {
+      // 1. Crear factura vacía SOLO UNA VEZ
+      const nuevaFactura = await createFactura()
+      if (!nuevaFactura) {
+        alert("Error al crear la factura")
+        return
+      }
+      const facturaId = nuevaFactura.idFactura
+      setIdFacturaActual(nuevaFactura.idFactura)
+      setNumeroFactura(nuevaFactura.numeroFactura)
+
+      // 2. Agregar todos los detalles
+      console.log("🛒 Agregando detalles del carrito:", carrito)
       
       for (const item of carrito) {
         const success = await addDetalleFactura({
           idFactura: facturaId,
-          cantidad: item.cantidad, // Cantidad total del item
+          cantidad: item.cantidad,
           idProducto: item.tipo === "producto" ? item.idItem : null,
           idServicio: item.tipo === "servicio" ? item.idItem : null,
         })
@@ -270,13 +278,17 @@ const VentasModule = () => {
         }
       }
 
-      // 3. Esperar un momento para que el backend procese los detalles
+      // 3. Esperar a que el backend calcule los totales
+      await new Promise(resolve => setTimeout(resolve, 800))
+
+      // 4. Obtener la factura actualizada con los totales REALES del backend
+      await fetchFacturaById(facturaId)
+
+      // 5. Esperar a que se actualice el estado
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      // 4. Actualizar la factura con vendedor, cliente y monto
-      const montoIngresado = montoCancelado ? parseFloat(montoCancelado) : 0
-
-      console.log("💰 Actualizando factura:", {
+      // 6. Actualizar factura con datos finales
+      console.log("💰 Actualizando factura con datos finales:", {
         idFactura: facturaId,
         idVendedor: vendedor.idVendedor,
         idCliente: clienteSeleccionado?.idCliente || null,
@@ -293,11 +305,11 @@ const VentasModule = () => {
       })
 
       if (success) {
-        // 5. Esperar y recargar la factura completa
+        // 7. Recargar factura final y mostrar resumen
         setTimeout(async () => {
           await fetchFacturaById(facturaId!)
           setMostrarResumenFinal(true)
-        }, 1000)
+        }, 500)
       } else {
         alert("Error al procesar la venta")
       }
@@ -307,7 +319,18 @@ const VentasModule = () => {
     }
   }
 
-  // NUEVA VENTA
+  // CANCELAR VENTA - Limpiar todo
+  const cancelarVenta = () => {
+    setCarrito([])
+    setIdFacturaActual(null)
+    setNumeroFactura(null)
+    setClienteSeleccionado(null)
+    setMontoCancelado("")
+    setMostrarResumenFinal(false)
+    setSearchTerm("")
+  }
+
+  // NUEVA VENTA (después de finalizar una)
   const nuevaVenta = () => {
     setCarrito([])
     setIdFacturaActual(null)
@@ -352,7 +375,7 @@ const VentasModule = () => {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* MODAL CONFIRMACIÓN */}
+        {/* MODAL CONFIRMACIÓN PROCESAR */}
         <ConfirmModal
           isOpen={mostrarModalConfirm}
           onClose={() => setMostrarModalConfirm(false)}
@@ -360,6 +383,16 @@ const VentasModule = () => {
           title="Confirmar Venta"
           message="¿Está seguro de procesar esta venta? Esta acción no se puede deshacer."
           type="success"
+        />
+
+        {/* MODAL CONFIRMACIÓN CANCELAR */}
+        <ConfirmModal
+          isOpen={mostrarModalCancelar}
+          onClose={() => setMostrarModalCancelar(false)}
+          onConfirm={cancelarVenta}
+          title="Cancelar Venta"
+          message="¿Está seguro de cancelar esta venta? Se perderán todos los datos ingresados."
+          type="danger"
         />
 
         {/* MODAL RESUMEN FINAL */}
@@ -439,6 +472,9 @@ const VentasModule = () => {
                 </div>
                 {(() => {
                   const totalesReales = calcularTotalesReales(factura)
+                  const saldoPendiente = totalesReales.total - factura.montoCancelado
+                  const cambio = factura.montoCancelado - totalesReales.total
+                  
                   return (
                     <div className="border-t border-gray-300 pt-4 space-y-2">
                       <div className="flex justify-between text-sm">
@@ -465,16 +501,16 @@ const VentasModule = () => {
                         <span>Monto Cancelado:</span>
                         <span>₡{factura.montoCancelado.toFixed(2)}</span>
                       </div>
-                      {factura.montoCancelado < totalesReales.total && (
+                      {saldoPendiente > 0.01 && (
                         <div className="flex justify-between text-sm text-red-600 font-semibold">
                           <span>Saldo Pendiente:</span>
-                          <span>₡{(totalesReales.total - factura.montoCancelado).toFixed(2)}</span>
+                          <span>₡{saldoPendiente.toFixed(2)}</span>
                         </div>
                       )}
-                      {factura.montoCancelado > totalesReales.total && (
+                      {cambio > 0.01 && (
                         <div className="flex justify-between text-sm text-green-600 font-semibold">
                           <span>Cambio:</span>
-                          <span>₡{(factura.montoCancelado - totalesReales.total).toFixed(2)}</span>
+                          <span>₡{cambio.toFixed(2)}</span>
                         </div>
                       )}
                     </div>
@@ -485,7 +521,7 @@ const VentasModule = () => {
           </div>
         )}
 
-        {/* MODAL CLIENTE INTELIGENTE */}
+        {/* MODAL CLIENTE */}
         {mostrarModalCliente && (
           <ModalCliente
             onClose={() => setMostrarModalCliente(false)}
@@ -542,7 +578,7 @@ const VentasModule = () => {
                   Información de Venta
                 </h3>
                 <div className="space-y-3">
-                  {/* INFORMACIÓN DEL VENDEDOR AUTENTICADO */}
+                  {/* VENDEDOR */}
                   <div>
                     <label className="block text-xs text-gray-600 mb-1">Vendedor</label>
                     <div className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
@@ -557,9 +593,9 @@ const VentasModule = () => {
                     </div>
                   </div>
 
-                  {/* SELECCIÓN DE CLIENTE */}
+                  {/* CLIENTE */}
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Cliente (Opcional)</label>
+                    <label className="block text-xs text-gray-600 mb-1">Cliente</label>
                     {clienteSeleccionado ? (
                       <div className="flex items-center justify-between bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
                         <div className="text-sm">
@@ -655,10 +691,21 @@ const VentasModule = () => {
                   </div>
                 </div>
 
-               <button
+                {/* BOTÓN CANCELAR VENTA */}
+                <button
+                  onClick={() => setMostrarModalCancelar(true)}
+                  disabled={carrito.length === 0}
+                  className="w-full mt-4 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition font-medium shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  <XCircle size={20} />
+                  Cancelar Venta
+                </button>
+
+                {/* BOTÓN PROCESAR VENTA */}
+                <button
                   onClick={() => setMostrarModalConfirm(true)}
                   disabled={carrito.length === 0 || loadingFactura}
-                  className="w-full mt-4 bg-[#9d8560] text-white px-4 py-3 rounded-lg hover:bg-[#b89d7d] transition font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full mt-3 bg-[#9d8560] text-white px-4 py-3 rounded-lg hover:bg-[#b89d7d] transition font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loadingFactura ? (
                     <>
