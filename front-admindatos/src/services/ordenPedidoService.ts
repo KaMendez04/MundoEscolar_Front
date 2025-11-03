@@ -27,8 +27,8 @@ export const ordenPedidoService = {
     return response.data;
   },
 
-  obtenerOrdenPedidoPorId: async (id: number): Promise<OrdenPedido> => {
-    const response = await client.get<OrdenPedido>(`/OrdenPedido/${id}`);
+  obtenerOrdenPedidoPorId: async (idOrdenPedido: number): Promise<OrdenPedido> => {
+    const response = await client.get<OrdenPedido>(`/OrdenPedido/ById/${idOrdenPedido}`);
     return response.data;
   },
 };
