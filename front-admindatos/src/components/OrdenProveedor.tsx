@@ -186,8 +186,6 @@ const ProveedoresOrdenesModule = () => {
     telefono: "",
   })
   const [formErrorProveedor, setFormErrorProveedor] = useState("")
-  const [searchProveedores, setSearchProveedores] = useState("")
-  const [filtroEstadoProveedor, setFiltroEstadoProveedor] = useState<boolean | undefined>(undefined)
   const { insertarCondicionesPago} = useCondicionesPagoProveedor()
   // Estados Órdenes
   const {
@@ -197,7 +195,8 @@ const ProveedoresOrdenesModule = () => {
     insertarOrdenPedido,
     actualizarOrdenPedido,
     fetchOrdenPedidos,
-    actualizarMontoCancelado
+    actualizarMontoCancelado,
+    obtenerOrdenPedidoPorId
   } = useOrdenPedidos()
 
   const [showModalOrden, setShowModalOrden] = useState(false)
@@ -205,10 +204,7 @@ const ProveedoresOrdenesModule = () => {
     numeroOrden: 0,
   })
   const [formErrorOrden, setFormErrorOrden] = useState("")
-  const [searchOrdenes, setSearchOrdenes] = useState("")
-  const [filtroEstadoPago, setFiltroEstadoPago] = useState<boolean | undefined>(undefined)
-  const [filtroFechaInicio, setFiltroFechaInicio] = useState("")
-  const [filtroFechaFin, setFiltroFechaFin] = useState("")
+
 
   // Estados para el wizard de creación de orden
   const [showWizardModal, setShowWizardModal] = useState(false)
@@ -219,6 +215,12 @@ const ProveedoresOrdenesModule = () => {
   const [wizardOrderId, setWizardOrderId] = useState<number | null>(null)
   const [wizardError, setWizardError] = useState("")
   const [wizardLoading, setWizardLoading] = useState(false)
+  const [wizardCalculatedTotals, setWizardCalculatedTotals] = useState<{
+    subtotal: number
+    descuento: number
+    impuesto: number
+    montoTotal: number
+  } | null>(null)
 
   // Estado para modal de ver orden
   const [showViewModal, setShowViewModal] = useState(false)
@@ -354,6 +356,7 @@ const ProveedoresOrdenesModule = () => {
     setWizardFinal({ idProveedor: 0, estadoPago: false, montoCancelado: 0, acepta:false })
     setWizardOrderId(null)
     setWizardError("")
+    setWizardCalculatedTotals(null)
     setShowWizardModal(true)
   }
 
@@ -409,7 +412,38 @@ const ProveedoresOrdenesModule = () => {
           return
         }
 
-        // Solo avanzar al paso 3, sin insertar detalles en BD
+        // Calcular totales en frontend basado en los productos seleccionados
+        let subtotalCalculado = 0
+        let impuestoCalculado = 0
+        let descuentoCalculado = 0
+
+        wizardDetails.forEach(detail => {
+          const producto = productos.find(p => p.idProducto === detail.idProducto)
+          if (producto) {
+            const cantidad = detail.cantidad
+            const precioBase = producto.monto * cantidad
+            const impuesto = (precioBase * (producto.impuesto / 100))
+            const descuento = (precioBase * (producto.descuento / 100))
+            
+            // Subtotal NO incluye impuesto, solo precio base
+            subtotalCalculado += precioBase
+            impuestoCalculado += impuesto
+            descuentoCalculado += descuento
+          }
+        })
+
+        // MontoTotal = Subtotal + Impuesto - Descuento
+        const montoTotalCalculado = subtotalCalculado + impuestoCalculado - descuentoCalculado
+
+        // Guardar totales calculados para mostrar en paso 3
+        setWizardCalculatedTotals({
+          subtotal: subtotalCalculado,
+          descuento: descuentoCalculado,
+          impuesto: impuestoCalculado,
+          montoTotal: montoTotalCalculado
+        })
+
+        // Avanzar al paso 3
         setWizardStep(3)
       } else if (wizardStep < 3) {
         setWizardStep(wizardStep + 1)
@@ -470,7 +504,6 @@ const ProveedoresOrdenesModule = () => {
           IdProveedor: wizardFinal.idProveedor,
           MontoCancelado: wizardFinal.montoCancelado,
         })
-
       ])
 
       // Solo después de que TODAS las peticiones terminen exitosamente, refrescar y cerrar
@@ -1388,6 +1421,31 @@ const ProveedoresOrdenesModule = () => {
               {wizardStep === 3 && (
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium text-gray-800">Finalizar Orden</h3>
+
+                  {/* Mostrar totales calculados si están disponibles */}
+                  {wizardCalculatedTotals && (
+                    <div className="bg-gradient-to-r from-[#4a9d9d]/10 to-[#5aadad]/10 p-4 rounded-lg border border-[#4a9d9d]/20">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3">Resumen de la Orden</h4>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Subtotal:</span>
+                          <span className="font-medium text-gray-900">₡{wizardCalculatedTotals.subtotal.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Impuesto:</span>
+                          <span className="font-medium text-gray-900">₡{wizardCalculatedTotals.impuesto.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Descuento:</span>
+                          <span className="font-medium text-red-600">-₡{wizardCalculatedTotals.descuento.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between pt-2 border-t border-[#4a9d9d]/20">
+                          <span className="font-semibold text-gray-700">Total:</span>
+                          <span className="font-bold text-[#4a9d9d] text-lg">₡{wizardCalculatedTotals.montoTotal.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
