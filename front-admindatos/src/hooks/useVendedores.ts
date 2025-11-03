@@ -64,6 +64,30 @@ export const useVendedores = () => {
         }
     };
 
+    const getMe = async () => {
+        try {
+        setError(null);
+        const data = await vendedoresService.getMe();
+        return data;
+        } catch (err: any) {
+        const errorMsg = err.response?.data?.message || 'Error al obtener información del vendedor actual';
+        setError(errorMsg);
+        throw new Error(errorMsg);
+        }
+    };
+
+    const getVendedorById = async (id: number) => {
+        try {
+        setError(null);
+        const data = await vendedoresService.getVendedorById(id);
+        return data;
+        } catch (err: any) {
+        const errorMsg = err.response?.data?.message || 'Error al obtener vendedor por ID';
+        setError(errorMsg);
+        throw new Error(errorMsg);
+        }
+    };
+
     return {
         vendedores,
         loading,
@@ -71,6 +95,8 @@ export const useVendedores = () => {
         createVendedor,
         updateVendedor,
         desactivarVendedor,
+        getMe,
+        getVendedorById,
         fetchVendedores,
     };
 };
