@@ -7,6 +7,7 @@ import type { Vendedor_RolDto } from "../types/vendedor_rol"
 import { rolesService } from "../services/rolService"
 import type { Rol } from "../types/rol"
 import { useVendedor_Rol } from "../hooks/useVendedor_Rol"
+import { useCedulaLookup } from "../hooks/useCedulaLookup"
 
 // Interfaz para roles disponibles (temporal - ajustar según tu API de roles)
 const useRolesDisponibles = () => {
@@ -230,7 +231,7 @@ const VendedoresModule = () => {
   const { vendedores, loading, error, createVendedor, updateVendedor, desactivarVendedor, fetchVendedores } = useVendedores()
   const { vendedor_rol, createVendedor_Rol, deleteVendedor_Rol } = useVendedor_Rol()
   const { roles: rolesDisponibles } = useRolesDisponibles() // REEMPLAZAR con tu hook real
-  
+   const { lookup, isLoading: loadingCedula } = useCedulaLookup()
   const [searchTerm, setSearchTerm] = useState("")
   const [showModal, setShowModal] = useState(false)
   const [showRolesModal, setShowRolesModal] = useState(false)
@@ -524,7 +525,7 @@ const VendedoresModule = () => {
       </div>
 
       {/* Modal Vendedor */}
-      {showModal && (
+       {showModal && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-xs bg-opacity-40 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
@@ -545,18 +546,51 @@ const VendedoresModule = () => {
               )}
 
               <div className="space-y-4">
+                {/* 👇 CAMPO DE CÉDULA MODIFICADO */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Cédula *</label>
-                  <input
-                    type="text"
-                    value={formData.cedula}
-                    onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                    required
-                    disabled={!!editingVendedor}
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.cedula}
+                      onChange={async (e) => {
+                        const value = e.target.value
+                        setFormData({ ...formData, cedula: value })
+                        
+                        // 👇 Buscar automáticamente si la cédula tiene 9-12 dígitos
+                        if (/^\d{9,12}$/.test(value) && !editingVendedor) {
+                          const result = await lookup(value)
+                          if (result) {
+                            setFormData(prev => ({
+                              ...prev,
+                              nombre: result.firstname || "",
+                              apellido1: result.lastname1 || "",
+                              apellido2: result.lastname2 || null
+                            }))
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                      required
+                      disabled={!!editingVendedor || loadingCedula}
+                      placeholder="Ingrese número de cédula"
+                    />
+                    {/* 👇 Indicador de carga */}
+                    {loadingCedula && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  {loadingCedula && (
+                    <p className="text-xs text-[#4a9d9d] mt-1">Buscando información de la cédula...</p>
+                  )}
                 </div>
 
+                {/* 👇 Los campos de nombre ahora se marcan como autocompletados visualmente */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Nombre *</label>
