@@ -58,7 +58,7 @@ const Notification = ({
   const notificationConfig = {
     success: {
       icon: CheckCircle,
-      bgColor: "bg-gradient-to-r from-green-50 to-green-50",
+      bgColor: "bg-gradient-to-r green",
       borderColor: "border-emerald-500",
       iconBgColor: "bg-emerald-100",
       iconColor: "text-emerald-600",
