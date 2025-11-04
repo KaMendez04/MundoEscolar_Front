@@ -44,10 +44,13 @@ export const facturaService = {
   },
 
   // Actualizar solo el monto cancelado
-  updateMontoCancelado: async (idFactura: number, montoCancelado: number): Promise<{ mensaje: string }> => {
-    const response = await client.put(
-      `/Facturas/monto-cancelado?idFactura=${idFactura}&montoCancelado=${montoCancelado}`
-    );
-    return response.data;
-  },
+ updateMontoCancelado: async (
+  idFactura: number,
+  montoCancelado: number
+): Promise<{ mensaje: string }> => {
+  const response = await client.put<{ mensaje: string }>(
+    `/Facturas/monto-cancelado?idFactura=${idFactura}&montoCancelado=${montoCancelado}`
+  );
+  return response.data;
+},
 };
