@@ -1,42 +1,50 @@
-// src/hooks/useFacturas.ts
-import { useEffect, useState } from 'react';
-import { facturasService, type FacturaUpdateDto } from '../services/facturasTablaService';
-import type { Factura } from '../types/facturasTabla';
+// src/hooks/useFacturasTabla.ts
+import { useState, useEffect } from "react";
+import { facturasService } from "../services/facturasTablaService";
+import type { Factura } from "../types/facturasTabla";
 
-export function useFacturas() {
+export function useFacturasTabla(tamanoPagina = 10) {
   const [facturas, setFacturas] = useState<Factura[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+  const [totalRegistros, setTotalRegistros] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [estadoPago, setEstadoPago] = useState<boolean | undefined>(undefined);
 
-  const loadFacturas = async () => {
+  const fetchFacturas = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      const data = await facturasService.getAllFacturas();
-      setFacturas(data);
-      setError(null);
+      const data = await facturasService.getFacturasPaginadas(
+        paginaActual,
+        tamanoPagina,
+        estadoPago
+      );
+      setFacturas(data.facturas);
+      setTotalPaginas(data.totalPaginas);
+      setTotalRegistros(data.totalRegistros);
     } catch (err) {
-      console.error(err);
-      setError('Error al cargar las facturas');
+      setError("No se pudieron cargar las facturas.");
     } finally {
       setLoading(false);
     }
   };
 
+  // recargar cuando cambia página o filtro
   useEffect(() => {
-    loadFacturas();
-  }, []);
+    fetchFacturas();
+  }, [paginaActual, estadoPago]);
 
-  const updateFactura = async (dto: FacturaUpdateDto) => {
-    try {
-      const response = await facturasService.updateFactura(dto);
-      // Recargar las facturas después de actualizar
-      await loadFacturas();
-      return { success: true, mensaje: response.mensaje };
-    } catch (err) {
-      console.error(err);
-      return { success: false, mensaje: 'Error al actualizar la factura' };
-    }
+  return {
+    facturas,
+    loading,
+    error,
+    paginaActual,
+    totalPaginas,
+    totalRegistros,
+    setPaginaActual,
+    estadoPago,
+    setEstadoPago, // 👈 necesario para el select del frontend
   };
-
-  return { facturas, loading, error, updateFactura, refreshFacturas: loadFacturas };
 }
