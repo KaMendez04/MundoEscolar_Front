@@ -195,12 +195,6 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                         {contador.criticas} crítica{contador.criticas > 1 ? "s" : ""}
                       </span>
                     )}
-                    {contador.advertencias > 0 && (
-                      <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-full font-medium">
-                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full"></div>
-                        {contador.advertencias} advertencia{contador.advertencias > 1 ? "s" : ""}
-                      </span>
-                    )}
                   </div>
                 )}
               </div>
@@ -276,22 +270,7 @@ export const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             )}
           </div>
 
-          {/* Footer con estadísticas */}
-          {notificaciones.length > 0 && (
-            <div className="px-5 py-3 border-t border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600 font-medium">
-                  {notificaciones.length} notificación{notificaciones.length > 1 ? "es" : ""} total{notificaciones.length > 1 ? "es" : ""}
-                </span>
-                {contador.totalNoLeidas > 0 && (
-                  <span className="flex items-center gap-1.5 text-[#4a9d9d] font-semibold">
-                    <div className="w-2 h-2 bg-[#4a9d9d] rounded-full animate-pulse"></div>
-                    {contador.totalNoLeidas} sin leer
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
+          
         </div>
       )}
 
