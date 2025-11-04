@@ -621,7 +621,7 @@ const VentasModule = () => {
 
                   {/* CLIENTE */}
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Cliente</label>
+                    <label className="block text-xs text-gray-600 mb-1">Cliente <span className="text-red-600">*</span></label>
                     {clienteSeleccionado ? (
                       <div className="flex items-center justify-between bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
                         <div className="text-sm">
@@ -730,7 +730,7 @@ const VentasModule = () => {
                 {/* BOTÓN PROCESAR VENTA */}
                 <button
                   onClick={() => setMostrarModalConfirm(true)}
-                  disabled={carrito.length === 0 || loadingFactura}
+                  disabled={carrito.length === 0 || loadingFactura || !clienteSeleccionado}
                   className="w-full mt-3 bg-[#9d8560] text-white px-4 py-3 rounded-lg hover:bg-[#b89d7d] transition font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loadingFactura ? (
