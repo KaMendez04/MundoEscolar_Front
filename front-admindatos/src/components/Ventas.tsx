@@ -22,6 +22,7 @@ import { useFacturas } from "../hooks/useFacturas"
 import { useDetalleFactura } from "../hooks/useDetalleFactura"
 import { useClientes } from "../hooks/useClientes"
 import { useMiVendedor } from "../hooks/useMiVendedor"
+import { useNotification } from "../context/NotificationContext"
 import type { Cliente } from "../types/cliente"
 import ModalCliente from "../components/Ventas/ModalCrearCliente"
 
@@ -98,6 +99,7 @@ const VentasModule = () => {
     loading: loadingClientes,
   } = useClientes()
   const { vendedor, loading: loadingVendedor, error: errorVendedor } = useMiVendedor()
+  const notification = useNotification()
 
   const [carrito, setCarrito] = useState<ItemVenta[]>([])
   const [mostrarModal, setMostrarModal] = useState(false)
@@ -131,7 +133,10 @@ const VentasModule = () => {
     const existente = carrito.find((i) => i.id === itemId)
 
     if (tipo === "producto" && existente && existente.cantidad >= item.stock) {
-      alert("No hay suficiente stock disponible")
+      notification.warning(
+        "Stock insuficiente",
+        "No hay suficiente stock disponible para este producto"
+      )
       return
     }
 
@@ -177,7 +182,10 @@ const VentasModule = () => {
     const nuevaCantidad = Math.max(1, item.cantidad + cambio)
     
     if (item.tipo === "producto" && item.stockDisponible && nuevaCantidad > item.stockDisponible) {
-      alert("No hay suficiente stock disponible")
+      notification.warning(
+        "Stock insuficiente",
+        `Solo hay ${item.stockDisponible} unidades disponibles`
+      )
       return
     }
 
@@ -241,8 +249,15 @@ const VentasModule = () => {
 
   // PROCESAR VENTA - CON VALIDACIÓN DE MONTO
   const procesarVenta = async () => {
-    if (carrito.length === 0) return alert("El carrito está vacío")
-    if (!vendedor) return alert("No se pudo obtener la información del vendedor")
+    if (carrito.length === 0) {
+      notification.warning("Carrito vacío", "Agrega productos o servicios antes de procesar la venta")
+      return
+    }
+    
+    if (!vendedor) {
+      notification.error("Error de vendedor", "No se pudo obtener la información del vendedor")
+      return
+    }
 
     // Calcular el total estimado
     const totalesEstimados = calcularTotales()
@@ -254,7 +269,7 @@ const VentasModule = () => {
       // 1. Crear factura vacía SOLO UNA VEZ
       const nuevaFactura = await createFactura()
       if (!nuevaFactura) {
-        alert("Error al crear la factura")
+        notification.error("Error", "No se pudo crear la factura")
         return
       }
       const facturaId = nuevaFactura.idFactura
@@ -273,7 +288,7 @@ const VentasModule = () => {
         })
 
         if (!success) {
-          alert(`Error al agregar ${item.nombre} a la factura`)
+          notification.error("Error", `No se pudo agregar ${item.nombre} a la factura`)
           return
         }
       }
@@ -309,13 +324,20 @@ const VentasModule = () => {
         setTimeout(async () => {
           await fetchFacturaById(facturaId!)
           setMostrarResumenFinal(true)
+          notification.success(
+            "¡Venta procesada!",
+            "La venta se ha registrado correctamente"
+          )
         }, 500)
       } else {
-        alert("Error al procesar la venta")
+        notification.error("Error", "No se pudo procesar la venta")
       }
     } catch (error: any) {
       console.error("❌ Error procesando venta:", error)
-      alert(`Error al procesar la venta: ${error.response?.data?.message || error.message || 'Error desconocido'}`)
+      notification.error(
+        "Error al procesar venta",
+        error.response?.data?.message || error.message || 'Error desconocido'
+      )
     }
   }
 
@@ -328,6 +350,10 @@ const VentasModule = () => {
     setMontoCancelado("")
     setMostrarResumenFinal(false)
     setSearchTerm("")
+    notification.info(
+      "Venta cancelada",
+      "La venta ha sido cancelada exitosamente"
+    )
   }
 
   // NUEVA VENTA (después de finalizar una)
