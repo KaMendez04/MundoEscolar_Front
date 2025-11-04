@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { vendedor_rolService } from "../services/vendedor_rolService";
 import type { Vendedor_RolDto, VendedorRolResult } from "../types/vendedor_rol";
+import { useVendedores } from "./useVendedores";
 
 export const useVendedor_Rol = () => {
+    const { fetchVendedores } = useVendedores()
     const [vendedor_rol, setVendedorRoles] = useState<VendedorRolResult[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -31,6 +33,7 @@ export const useVendedor_Rol = () => {
         await vendedor_rolService.createVendedor_Rol(vendedor_rol);
         // Vuelve a traer todos los vendedores del backend
         await fetchRoles();
+        await fetchVendedores();
         } catch (err: any) {
         const errorMsg = err.response?.data?.message || 'Error al crear vendedor_rol';
         setError(errorMsg);
@@ -44,6 +47,7 @@ export const useVendedor_Rol = () => {
         await vendedor_rolService.deleteVendedor_Rol(vendedor_rol);
         // 👇 También recarga después de eliminar
         await fetchRoles();
+        await fetchVendedores();
         } catch (err: any) {
         const errorMsg = err.response?.data?.message || 'Error al eliminar vendedor_rol';
         setError(errorMsg);
