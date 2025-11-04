@@ -5,20 +5,38 @@ import type {
   CreateOrdenPedidoDto,
   UpdateOrdenPedidoDto,
   InsertarOrdenPedidoResponse,
+  VistaOrdenPedido,
 } from '../types/ordenPedido';
 
 export const useOrdenPedidos = () => {
 
-  const [ordenes, setOrdenes] = useState<any>([]);
+  const [ordenes, setOrdenes] = useState<VistaOrdenPedido[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
 
-  const fetchOrdenPedidos = async () => {
+  const fetchOrdenPedidos = async (params?: {
+    pageNumber?: number;
+    pageSize?: number;
+    numeroOrden?: number;
+    fechaInicio?: string;
+    fechaFin?: string;
+    estadoPago?: string;
+    idProveedor?: number;
+    montoMinimo?: number;
+    montoMaximo?: number;
+  }) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await ordenPedidoService.obtenerOrdenPedidos();
-      setOrdenes(response);
+      const response = await ordenPedidoService.obtenerOrdenPedidos(params);
+      setOrdenes(response.data);
+      setPageNumber(response.pageNumber);
+      setTotalPages(response.totalPages);
+      setTotalRecords(response.totalRecords);
       return response;
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cargar órdenes de pedido');
@@ -30,7 +48,7 @@ export const useOrdenPedidos = () => {
   };
 
   useEffect(() => {
-    fetchOrdenPedidos();
+    fetchOrdenPedidos({ pageNumber: 1, pageSize });
   }, []);
 
   const insertarOrdenPedido = async (orden: CreateOrdenPedidoDto): Promise<InsertarOrdenPedidoResponse> => {
@@ -85,10 +103,16 @@ export const useOrdenPedidos = () => {
     ordenes,
     loading,
     error,
+    pageNumber,
+    pageSize,
+    totalPages,
+    totalRecords,
     insertarOrdenPedido,
     actualizarOrdenPedido,
     fetchOrdenPedidos,
     obtenerOrdenPedidoPorId,
     actualizarMontoCancelado,
+    setPageNumber,
+    setPageSize,
   };
 };

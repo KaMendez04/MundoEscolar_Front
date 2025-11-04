@@ -48,3 +48,10 @@ export interface InsertarOrdenPedidoResponse {
   mensajes: string[];
 }
 
+export interface PaginatedResponse<T> {
+  pageNumber: number;
+  pageSize: number;
+  totalRecords: number;
+  totalPages: number;
+  data: T[];
+}

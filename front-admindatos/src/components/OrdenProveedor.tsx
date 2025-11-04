@@ -1,5 +1,5 @@
 import type React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Plus,
   Search,
@@ -172,10 +172,17 @@ const ProveedoresOrdenesModule = () => {
     proveedores,
     loading: loadingProveedores,
     error: errorProveedores,
+    pageNumber: pageNumberProveedores,
+    pageSize: pageSizeProveedores,
+    totalPages: totalPagesProveedores,
+    totalRecords: totalRecordsProveedores,
     insertarProveedor,
     actualizarProveedor,
     desactivarProveedor,
     activarProveedor,
+    fetchProveedores,
+    setPageNumber: setPageNumberProveedores,
+    setPageSize: setPageSizeProveedores,
   } = useProveedores()
 
   const [showModalProveedor, setShowModalProveedor] = useState(false)
@@ -186,18 +193,28 @@ const ProveedoresOrdenesModule = () => {
     telefono: "",
   })
   const [formErrorProveedor, setFormErrorProveedor] = useState("")
-  const [searchProveedores, setSearchProveedores] = useState("")
-  const [filtroEstadoProveedor, setFiltroEstadoProveedor] = useState<boolean | undefined>(undefined)
+  const [filtroEstadoProveedor, setFiltroEstadoProveedor] = useState<string>("Todos")
+  const [filtroNombreProveedor, setFiltroNombreProveedor] = useState("")
+  const [filtroCedulaProveedor, setFiltroCedulaProveedor] = useState("")
+  const [filtroTelefonoProveedor, setFiltroTelefonoProveedor] = useState("")
+  
   const { insertarCondicionesPago} = useCondicionesPagoProveedor()
+  
   // Estados Órdenes
   const {
     ordenes,
     loading: loadingOrdenes,
     error: errorOrdenes,
+    pageNumber: pageNumberOrdenes,
+    pageSize: pageSizeOrdenes,
+    totalPages: totalPagesOrdenes,
+    totalRecords: totalRecordsOrdenes,
     insertarOrdenPedido,
     actualizarOrdenPedido,
     fetchOrdenPedidos,
-    actualizarMontoCancelado
+    actualizarMontoCancelado,
+    setPageNumber: setPageNumberOrdenes,
+    setPageSize: setPageSizeOrdenes,
   } = useOrdenPedidos()
 
   const [showModalOrden, setShowModalOrden] = useState(false)
@@ -205,10 +222,20 @@ const ProveedoresOrdenesModule = () => {
     numeroOrden: 0,
   })
   const [formErrorOrden, setFormErrorOrden] = useState("")
-  const [searchOrdenes, setSearchOrdenes] = useState("")
-  const [filtroEstadoPago, setFiltroEstadoPago] = useState<boolean | undefined>(undefined)
+  const [filtroEstadoPago, setFiltroEstadoPago] = useState<string>("Todos")
   const [filtroFechaInicio, setFiltroFechaInicio] = useState("")
   const [filtroFechaFin, setFiltroFechaFin] = useState("")
+  const [filtroNumeroOrden, setFiltroNumeroOrden] = useState("")
+  const [filtroIdProveedor, setFiltroIdProveedor] = useState("")
+  const [filtroMontoMinimo, setFiltroMontoMinimo] = useState("")
+  const [filtroMontoMaximo, setFiltroMontoMaximo] = useState("")
+
+  // Estados para modales de filtros
+  const [showFiltrosProveedores, setShowFiltrosProveedores] = useState(false)
+  const [showFiltrosOrdenes, setShowFiltrosOrdenes] = useState(false)
+
+  const [proveedoresParaFiltro, setProveedoresParaFiltro] = useState<VistaProveedor[]>([])
+  const [ordenesCompletas, setOrdenesCompletas] = useState<VistaOrdenPedido[]>([])
 
   // Estados para el wizard de creación de orden
   const [showWizardModal, setShowWizardModal] = useState(false)
@@ -219,6 +246,12 @@ const ProveedoresOrdenesModule = () => {
   const [wizardOrderId, setWizardOrderId] = useState<number | null>(null)
   const [wizardError, setWizardError] = useState("")
   const [wizardLoading, setWizardLoading] = useState(false)
+  const [wizardCalculatedTotals, setWizardCalculatedTotals] = useState<{
+    subtotal: number
+    descuento: number
+    impuesto: number
+    montoTotal: number
+  } | null>(null)
 
   // Estado para modal de ver orden
   const [showViewModal, setShowViewModal] = useState(false)
@@ -226,8 +259,6 @@ const ProveedoresOrdenesModule = () => {
 
   // Estados Detalles
   const {
-    loading: loadingDetalles,
-    error: errorDetalles,
     createDetalle,
     updateDetalle,
   } = useDetalleOrdenPedido()
@@ -242,7 +273,7 @@ const ProveedoresOrdenesModule = () => {
     idProducto: 0,
   })
   const [formErrorDetalle, setFormErrorDetalle] = useState("")
-  const [searchDetalles, setSearchDetalles] = useState("")
+
 
   // Estado para modal de actualizar monto
   const [showMontoModal, setShowMontoModal] = useState(false)
@@ -273,6 +304,28 @@ const ProveedoresOrdenesModule = () => {
     telefono: string;
     estado: boolean;
   }
+
+  // Cargar todos los proveedores y órdenes para filtros/uso general (sin límite de paginación)
+  useEffect(() => {
+    const cargarDatosCompletos = async () => {
+      try {
+        // Cargar proveedores
+        const responseProveedores = await fetchProveedores({ pageNumber: 1, pageSize: 1000 });
+        if (responseProveedores) {
+          setProveedoresParaFiltro(responseProveedores.data);
+        }
+
+        // Cargar órdenes
+        const responseOrdenes = await fetchOrdenPedidos({ pageNumber: 1, pageSize: 1000 });
+        if (responseOrdenes) {
+          setOrdenesCompletas(responseOrdenes.data);
+        }
+      } catch (error) {
+        console.error('Error al cargar datos completos:', error);
+      }
+    };
+    cargarDatosCompletos();
+  }, []); // Solo se ejecuta una vez al montar el componente
 
   // Handlers Proveedores
   const handleOpenModalProveedor = (proveedor?: VistaProveedor) => {
@@ -354,6 +407,7 @@ const ProveedoresOrdenesModule = () => {
     setWizardFinal({ idProveedor: 0, estadoPago: false, montoCancelado: 0, acepta:false })
     setWizardOrderId(null)
     setWizardError("")
+    setWizardCalculatedTotals(null)
     setShowWizardModal(true)
   }
 
@@ -409,7 +463,38 @@ const ProveedoresOrdenesModule = () => {
           return
         }
 
-        // Solo avanzar al paso 3, sin insertar detalles en BD
+        // Calcular totales en frontend basado en los productos seleccionados
+        let subtotalCalculado = 0
+        let impuestoCalculado = 0
+        let descuentoCalculado = 0
+
+        wizardDetails.forEach(detail => {
+          const producto = productos.find(p => p.idProducto === detail.idProducto)
+          if (producto) {
+            const cantidad = detail.cantidad
+            const precioBase = producto.monto * cantidad
+            const impuesto = (precioBase * (producto.impuesto / 100))
+            const descuento = (precioBase * (producto.descuento / 100))
+            
+            // Subtotal NO incluye impuesto, solo precio base
+            subtotalCalculado += precioBase
+            impuestoCalculado += impuesto
+            descuentoCalculado += descuento
+          }
+        })
+
+        // MontoTotal = Subtotal + Impuesto - Descuento
+        const montoTotalCalculado = subtotalCalculado + impuestoCalculado - descuentoCalculado
+
+        // Guardar totales calculados para mostrar en paso 3
+        setWizardCalculatedTotals({
+          subtotal: subtotalCalculado,
+          descuento: descuentoCalculado,
+          impuesto: impuestoCalculado,
+          montoTotal: montoTotalCalculado
+        })
+
+        // Avanzar al paso 3
         setWizardStep(3)
       } else if (wizardStep < 3) {
         setWizardStep(wizardStep + 1)
@@ -470,7 +555,6 @@ const ProveedoresOrdenesModule = () => {
           IdProveedor: wizardFinal.idProveedor,
           MontoCancelado: wizardFinal.montoCancelado,
         })
-
       ])
 
       // Solo después de que TODAS las peticiones terminen exitosamente, refrescar y cerrar
@@ -543,28 +627,6 @@ const ProveedoresOrdenesModule = () => {
   }
 
 
-  // Handlers Detalles
-  // ** MODIFICACIÓN 2: Recibir ordenId para inicializar el form **
-  const handleOpenModalDetalle = (detalle?: any, ordenId?: number) => {
-    if (detalle) {
-      setEditingDetalle(detalle)
-      setFormDataDetalle({
-        idOrdenPedido: detalle.idOrdenPedido,
-        cantidad: detalle.cantidad,
-        idProducto: detalle.idProducto,
-      })
-    } else {
-      setEditingDetalle(null)
-      setFormDataDetalle({
-        // Utiliza el ordenId si se proporciona, de lo contrario, usa la lógica anterior (primera orden en la lista).
-        idOrdenPedido: ordenId || (ordenes.length > 0 ? ordenes[0].idOrdenPedido : 0),
-        cantidad: 1,
-        idProducto: productos.length > 0 ? productos[0].idProducto : 0,
-      })
-    }
-    setFormErrorDetalle("")
-    setShowModalDetalle(true)
-  }
 
   const handleSubmitDetalle = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -585,6 +647,91 @@ const ProveedoresOrdenesModule = () => {
     } catch (err: any) {
       setFormErrorDetalle(getErrorMessage(err))
     }
+  }
+
+  // Handlers de filtros y paginación para Proveedores
+  const handleFiltroProveedorChange = () => {
+    setPageNumberProveedores(1) // Reset a página 1
+    fetchProveedores({
+      pageNumber: 1,
+      pageSize: pageSizeProveedores,
+      nombre: filtroNombreProveedor || undefined,
+      cedulaJuridica: filtroCedulaProveedor || undefined,
+      telefono: filtroTelefonoProveedor || undefined,
+      estado: filtroEstadoProveedor !== "Todos" ? filtroEstadoProveedor : undefined
+    })
+  }
+
+  const handlePageChangeProveedores = (newPage: number) => {
+    setPageNumberProveedores(newPage)
+    fetchProveedores({
+      pageNumber: newPage,
+      pageSize: pageSizeProveedores,
+      nombre: filtroNombreProveedor || undefined,
+      cedulaJuridica: filtroCedulaProveedor || undefined,
+      telefono: filtroTelefonoProveedor || undefined,
+      estado: filtroEstadoProveedor !== "Todos" ? filtroEstadoProveedor : undefined
+    })
+  }
+
+  // Handlers de filtros y paginación para Órdenes
+  const handleFiltroOrdenesChange = () => {
+    setPageNumberOrdenes(1) // Reset a página 1
+    fetchOrdenPedidos({
+      pageNumber: 1,
+      pageSize: pageSizeOrdenes,
+      numeroOrden: filtroNumeroOrden ? parseInt(filtroNumeroOrden) : undefined,
+      fechaInicio: filtroFechaInicio || undefined,
+      fechaFin: filtroFechaFin || undefined,
+      estadoPago: filtroEstadoPago !== "Todos" ? filtroEstadoPago : undefined,
+      idProveedor: filtroIdProveedor ? parseInt(filtroIdProveedor) : undefined,
+      montoMinimo: filtroMontoMinimo ? parseFloat(filtroMontoMinimo) : undefined,
+      montoMaximo: filtroMontoMaximo ? parseFloat(filtroMontoMaximo) : undefined
+    })
+  }
+
+  const handlePageChangeOrdenes = (newPage: number) => {
+    setPageNumberOrdenes(newPage)
+    fetchOrdenPedidos({
+      pageNumber: newPage,
+      pageSize: pageSizeOrdenes,
+      numeroOrden: filtroNumeroOrden ? parseInt(filtroNumeroOrden) : undefined,
+      fechaInicio: filtroFechaInicio || undefined,
+      fechaFin: filtroFechaFin || undefined,
+      estadoPago: filtroEstadoPago !== "Todos" ? filtroEstadoPago : undefined,
+      idProveedor: filtroIdProveedor ? parseInt(filtroIdProveedor) : undefined,
+      montoMinimo: filtroMontoMinimo ? parseFloat(filtroMontoMinimo) : undefined,
+      montoMaximo: filtroMontoMaximo ? parseFloat(filtroMontoMaximo) : undefined
+    })
+  }
+
+  // Handlers para cambiar el tamaño de página
+  const handlePageSizeChangeProveedores = (newPageSize: number) => {
+    setPageSizeProveedores(newPageSize)
+    setPageNumberProveedores(1) // Reset a página 1
+    fetchProveedores({
+      pageNumber: 1,
+      pageSize: newPageSize,
+      nombre: filtroNombreProveedor || undefined,
+      cedulaJuridica: filtroCedulaProveedor || undefined,
+      telefono: filtroTelefonoProveedor || undefined,
+      estado: filtroEstadoProveedor !== "Todos" ? filtroEstadoProveedor : undefined
+    })
+  }
+
+  const handlePageSizeChangeOrdenes = (newPageSize: number) => {
+    setPageSizeOrdenes(newPageSize)
+    setPageNumberOrdenes(1) // Reset a página 1
+    fetchOrdenPedidos({
+      pageNumber: 1,
+      pageSize: newPageSize,
+      fechaInicio: filtroFechaInicio || undefined,
+      fechaFin: filtroFechaFin || undefined,
+      estadoPago: filtroEstadoPago !== "Todos" ? filtroEstadoPago : undefined,
+      idProveedor: filtroIdProveedor ? parseInt(filtroIdProveedor) : undefined,
+      montoMinimo: filtroMontoMinimo ? parseFloat(filtroMontoMinimo) : undefined,
+      montoMaximo: filtroMontoMaximo ? parseFloat(filtroMontoMaximo) : undefined
+    })
   }
 
   return (
@@ -632,15 +779,25 @@ const ProveedoresOrdenesModule = () => {
                     <h2 className="text-lg font-semibold text-gray-800">Proveedores</h2>
                     <p className="text-sm text-gray-500 mt-0.5">Gestiona tus proveedores</p>
                   </div>
-                  <button
-                    onClick={() => handleOpenModalProveedor()}
-                    className="flex items-center gap-2 bg-[#4a9d9d] text-white px-4 py-2.5 rounded-lg hover:bg-[#5aadad] transition shadow-sm font-medium"
-                  >
-                    <Plus size={18} />
-                    Nuevo Proveedor
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowFiltrosProveedores(true)}
+                      className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2.5 rounded-lg hover:bg-gray-700 transition shadow-sm font-medium"
+                    >
+                      <Filter size={18} />
+                      Filtros
+                    </button>
+                    <button
+                      onClick={() => handleOpenModalProveedor()}
+                      className="flex items-center gap-2 bg-[#4a9d9d] text-white px-4 py-2.5 rounded-lg hover:bg-[#5aadad] transition shadow-sm font-medium"
+                    >
+                      <Plus size={18} />
+                      Nuevo Proveedor
+                    </button>
+                  </div>
                 </div>
 
+                {/* Filtros para Proveedores - Ahora en Modal */}
 
                 {errorProveedores && (
                   <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
@@ -655,7 +812,7 @@ const ProveedoresOrdenesModule = () => {
                     <p className="mt-4 text-gray-600 text-sm">Cargando proveedores...</p>
                   </div>
                 ) : (
-                  
+                  <>
                     <div className="overflow-x-auto rounded-lg border border-gray-200">
                       <table className="w-full">
                         <thead className="bg-gray-50">
@@ -727,7 +884,51 @@ const ProveedoresOrdenesModule = () => {
                         </div>
                       )}
                     </div>
-           
+
+                    {/* Controles de Paginación - Proveedores */}
+                    {totalRecordsProveedores > 0 && (
+                      <div className="mt-4 flex justify-between items-center px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <label htmlFor="pageSize-proveedores" className="text-sm text-gray-600">
+                              Por página:
+                            </label>
+                            <select
+                              id="pageSize-proveedores"
+                              value={pageSizeProveedores}
+                              onChange={(e) => handlePageSizeChangeProveedores(Number(e.target.value))}
+                              className="px-2 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value={5}>5</option>
+                              <option value={10}>10</option>
+                              <option value={25}>25</option>
+                              <option value={50}>50</option>
+                              <option value={100}>100</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handlePageChangeProveedores(pageNumberProveedores - 1)}
+                            disabled={pageNumberProveedores === 1}
+                            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                          >
+                            Anterior
+                          </button>
+                          <span className="px-3 py-1.5 text-sm text-gray-600">
+                            Página {pageNumberProveedores} de {totalPagesProveedores}
+                          </span>
+                          <button
+                            onClick={() => handlePageChangeProveedores(pageNumberProveedores + 1)}
+                            disabled={pageNumberProveedores >= totalPagesProveedores}
+                            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                          >
+                            Siguiente
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -742,16 +943,25 @@ const ProveedoresOrdenesModule = () => {
                     <h2 className="text-lg font-semibold text-gray-800">Órdenes de Pedido</h2>
                     <p className="text-sm text-gray-500 mt-0.5">Gestiona las órdenes de compra</p>
                   </div>
-                  <button
-                    onClick={handleOpenModalOrden}
-                    className="flex items-center gap-2 bg-[#4a9d9d] text-white px-4 py-2.5 rounded-lg hover:bg-[#5aadad] transition shadow-sm font-medium"
-                  >
-                    <Plus size={18} />
-                    Nueva Orden
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowFiltrosOrdenes(true)}
+                      className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2.5 rounded-lg hover:bg-gray-700 transition shadow-sm font-medium"
+                    >
+                      <Filter size={18} />
+                      Filtros
+                    </button>
+                    <button
+                      onClick={handleOpenModalOrden}
+                      className="flex items-center gap-2 bg-[#4a9d9d] text-white px-4 py-2.5 rounded-lg hover:bg-[#5aadad] transition shadow-sm font-medium"
+                    >
+                      <Plus size={18} />
+                      Nueva Orden
+                    </button>
+                  </div>
                 </div>
 
-
+                {/* Filtros para Órdenes - Ahora en Modal */}
 
                 {errorOrdenes && (
                   <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
@@ -766,7 +976,7 @@ const ProveedoresOrdenesModule = () => {
                     <p className="mt-4 text-gray-600 text-sm">Cargando órdenes...</p>
                   </div>
                 ) : (
-                  
+                  <>
                     <div className="overflow-x-auto rounded-lg border border-gray-200">
                       <table className="w-full">
                         <thead className="bg-gray-50">
@@ -845,7 +1055,51 @@ const ProveedoresOrdenesModule = () => {
                         </div>
                       )}
                     </div>
-                
+
+                    {/* Controles de Paginación - Órdenes */}
+                    {totalRecordsOrdenes > 0 && (
+                      <div className="mt-4 flex justify-between items-center px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <label htmlFor="pageSize-ordenes" className="text-sm text-gray-600">
+                              Por página:
+                            </label>
+                            <select
+                              id="pageSize-ordenes"
+                              value={pageSizeOrdenes}
+                              onChange={(e) => handlePageSizeChangeOrdenes(Number(e.target.value))}
+                              className="px-2 py-1 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value={5}>5</option>
+                              <option value={10}>10</option>
+                              <option value={25}>25</option>
+                              <option value={50}>50</option>
+                              <option value={100}>100</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handlePageChangeOrdenes(pageNumberOrdenes - 1)}
+                            disabled={pageNumberOrdenes === 1}
+                            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                          >
+                            Anterior
+                          </button>
+                          <span className="px-3 py-1.5 text-sm text-gray-600">
+                            Página {pageNumberOrdenes} de {totalPagesOrdenes}
+                          </span>
+                          <button
+                            onClick={() => handlePageChangeOrdenes(pageNumberOrdenes + 1)}
+                            disabled={pageNumberOrdenes >= totalPagesOrdenes}
+                            className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                          >
+                            Siguiente
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
@@ -1389,6 +1643,31 @@ const ProveedoresOrdenesModule = () => {
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium text-gray-800">Finalizar Orden</h3>
 
+                  {/* Mostrar totales calculados si están disponibles */}
+                  {wizardCalculatedTotals && (
+                    <div className="bg-gradient-to-r from-[#4a9d9d]/10 to-[#5aadad]/10 p-4 rounded-lg border border-[#4a9d9d]/20">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3">Resumen de la Orden</h4>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Subtotal:</span>
+                          <span className="font-medium text-gray-900">₡{wizardCalculatedTotals.subtotal.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Impuesto:</span>
+                          <span className="font-medium text-gray-900">₡{wizardCalculatedTotals.impuesto.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Descuento:</span>
+                          <span className="font-medium text-red-600">-₡{wizardCalculatedTotals.descuento.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between pt-2 border-t border-[#4a9d9d]/20">
+                          <span className="font-semibold text-gray-700">Total:</span>
+                          <span className="font-bold text-[#4a9d9d] text-lg">₡{wizardCalculatedTotals.montoTotal.toLocaleString('es-CR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1.5">Proveedor</label>
@@ -1642,6 +1921,230 @@ const ProveedoresOrdenesModule = () => {
                   className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
                 >
                   Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Filtros - Proveedores */}
+      {showFiltrosProveedores && (
+        <div className="fixed inset-0 bg-transparent flex items-center justify-end z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Filter className="text-gray-600" size={20} />
+                <h3 className="text-lg font-semibold text-gray-800">Filtros - Proveedores</h3>
+              </div>
+              <button
+                onClick={() => setShowFiltrosProveedores(false)}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="flex flex-col gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Nombre
+                  </label>
+                  <input
+                    type="text"
+                    value={filtroNombreProveedor}
+                    onChange={(e) => setFiltroNombreProveedor(e.target.value)}
+                    placeholder="Buscar por nombre"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Cédula Jurídica
+                  </label>
+                  <input
+                    type="text"
+                    value={filtroCedulaProveedor}
+                    onChange={(e) => setFiltroCedulaProveedor(e.target.value)}
+                    placeholder="Ej: 1234567890"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Teléfono
+                  </label>
+                  <input
+                    type="text"
+                    value={filtroTelefonoProveedor}
+                    onChange={(e) => setFiltroTelefonoProveedor(e.target.value)}
+                    placeholder="Ej: 88888888"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Estado
+                  </label>
+                  <select
+                    value={filtroEstadoProveedor}
+                    onChange={(e) => setFiltroEstadoProveedor(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                  >
+                    <option value="Todos">Todos</option>
+                    <option value="Activo">Activo</option>
+                    <option value="Inactivo">Inactivo</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setShowFiltrosProveedores(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    handleFiltroProveedorChange()
+                    setShowFiltrosProveedores(false)
+                  }}
+                  className="px-4 py-2 bg-[#4a9d9d] text-white rounded-lg hover:bg-[#5aadad] transition font-medium"
+                >
+                  Aplicar Filtros
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Filtros - Órdenes */}
+      {showFiltrosOrdenes && (
+        <div className="fixed inset-0 bg-transparent flex items-center justify-end z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Filter className="text-gray-600" size={20} />
+                <h3 className="text-lg font-semibold text-gray-800">Filtros - Órdenes de Pedido</h3>
+              </div>
+              <button
+                onClick={() => setShowFiltrosOrdenes(false)}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div className="flex flex-col gap-4">
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Estado de Pago
+                  </label>
+                  <select
+                    value={filtroEstadoPago}
+                    onChange={(e) => setFiltroEstadoPago(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                  >
+                    <option value="Todos">Todos</option>
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="Pagado">Pagado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Fecha Inicio
+                  </label>
+                  <input
+                    type="date"
+                    value={filtroFechaInicio}
+                    onChange={(e) => setFiltroFechaInicio(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Fecha Fin
+                  </label>
+                  <input
+                    type="date"
+                    value={filtroFechaFin}
+                    onChange={(e) => setFiltroFechaFin(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Proveedor
+                  </label>
+                  <select
+                    value={filtroIdProveedor}
+                    onChange={(e) => setFiltroIdProveedor(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                  >
+                    <option value="">Todos los proveedores</option>
+                    {proveedoresParaFiltro.map((proveedor) => (
+                      <option key={proveedor.idProveedor} value={proveedor.idProveedor}>
+                        {proveedor.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Monto Mínimo
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={filtroMontoMinimo}
+                    onChange={(e) => setFiltroMontoMinimo(e.target.value)}
+                    placeholder="₡0.00"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                    Monto Máximo
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={filtroMontoMaximo}
+                    onChange={(e) => setFiltroMontoMaximo(e.target.value)}
+                    placeholder="₡0.00"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => setShowFiltrosOrdenes(false)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    handleFiltroOrdenesChange()
+                    setShowFiltrosOrdenes(false)
+                  }}
+                  className="px-4 py-2 bg-[#4a9d9d] text-white rounded-lg hover:bg-[#5aadad] transition font-medium"
+                >
+                  Aplicar Filtros
                 </button>
               </div>
             </div>
