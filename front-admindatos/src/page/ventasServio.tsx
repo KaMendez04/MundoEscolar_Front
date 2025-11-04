@@ -1,7 +1,5 @@
 import ServiciosModule from "../components/Servicios";
 
-
-
  const VentasServicio = () => {
     return (
         <div className="p-4">
