@@ -4,26 +4,41 @@ import { proveedorService,condicionsPagoProveedorService } from '../services/pro
 import type { 
   CreateProveedorDto, 
   UpdateProveedorDto,
-  CondicionPagoProveedor
+  CondicionPagoProveedor,
+  VistaProveedor,
 } from '../types/proveedor';
 
 
 export const useProveedores = () => {
 
-  const [proveedores, setProveedores] = useState<any>(null);
+  const [proveedores, setProveedores] = useState<VistaProveedor[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [pageNumber, setPageNumber] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
 
-  const fetchProveedores = async () => {
+  const fetchProveedores = async (params?: {
+    pageNumber?: number;
+    pageSize?: number;
+    nombre?: string;
+    cedulaJuridica?: string;
+    telefono?: string;
+    estado?: string;
+  }) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await proveedorService.obtenerProveedores();
-      setProveedores(response);
+      const response = await proveedorService.obtenerProveedores(params);
+      setProveedores(response.data);
+      setPageNumber(response.pageNumber);
+      setTotalPages(response.totalPages);
+      setTotalRecords(response.totalRecords);
       return response;
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cargar proveedores');
-      setProveedores(null);
+      setProveedores([]);
       console.error('Error fetching proveedores:', err);
     } finally {
       setLoading(false);
@@ -31,14 +46,14 @@ export const useProveedores = () => {
   };
 
   useEffect(() => {
-    fetchProveedores();
+    fetchProveedores({ pageNumber: 1, pageSize });
   }, []);
 
   const insertarProveedor = async (proveedor: CreateProveedorDto) => {
     try {
       setError(null);
       const mensajes = await proveedorService.insertarProveedor(proveedor);
-      await fetchProveedores();
+      await fetchProveedores({ pageNumber: 1, pageSize });
       return mensajes;
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al insertar proveedor';
@@ -51,7 +66,7 @@ export const useProveedores = () => {
     try {
       setError(null);
       const mensajes = await proveedorService.actualizarProveedor(proveedor);
-      await fetchProveedores();
+      await fetchProveedores({ pageNumber, pageSize });
       return mensajes;
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al actualizar proveedor';
@@ -64,7 +79,7 @@ export const useProveedores = () => {
     try {
       setError(null);
       const mensajes = await proveedorService.desactivarProveedor(cedulaJuridica);
-      await fetchProveedores();
+      await fetchProveedores({ pageNumber, pageSize });
       return mensajes;
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al desactivar proveedor';
@@ -77,7 +92,7 @@ export const useProveedores = () => {
     try {
       setError(null);
       const mensajes = await proveedorService.activarProveedor(cedulaJuridica);
-      await fetchProveedores();
+      await fetchProveedores({ pageNumber, pageSize });
       return mensajes;
     } catch (err: any) {
       const errorMsg = err.response?.data?.message || 'Error al activar proveedor';
@@ -90,11 +105,17 @@ export const useProveedores = () => {
     proveedores,
     loading,
     error,
+    pageNumber,
+    pageSize,
+    totalPages,
+    totalRecords,
     insertarProveedor,
     actualizarProveedor,
     desactivarProveedor,
     activarProveedor,
     fetchProveedores,
+    setPageNumber,
+    setPageSize,
   };
 };
 
