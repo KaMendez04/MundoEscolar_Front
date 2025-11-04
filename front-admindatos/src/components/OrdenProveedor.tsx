@@ -782,7 +782,7 @@ const ProveedoresOrdenesModule = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setShowFiltrosProveedores(true)}
-                      className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2.5 rounded-lg hover:bg-gray-700 transition shadow-sm font-medium"
+                      className="flex items-center gap-2 bg-[#9d8560] text-white px-4 py-2.5 rounded-lg hover:bg-[#b89d7d] transition shadow-sm font-medium"
                     >
                       <Filter size={18} />
                       Filtros
@@ -946,7 +946,7 @@ const ProveedoresOrdenesModule = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setShowFiltrosOrdenes(true)}
-                      className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2.5 rounded-lg hover:bg-gray-700 transition shadow-sm font-medium"
+                      className="flex items-center gap-2 bg-[#9d8560] text-white px-4 py-2.5 rounded-lg hover:bg-[#b89d7d] transition shadow-sm font-medium"
                     >
                       <Filter size={18} />
                       Filtros
