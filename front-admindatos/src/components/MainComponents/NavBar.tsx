@@ -16,6 +16,7 @@ import {
   Users,
   UserCheck,
   FolderOpen,
+  ShoppingCart
 } from "lucide-react";
 import { useNotificaciones } from "../../hooks/useNotificacion";
 import { useMiVendedor } from "../../hooks/useMiVendedor";
@@ -43,7 +44,7 @@ const routeTitles: Record<string, string> = {
 
 const navigationItems = [
   { to: '/', icon: TrendingUp, label: 'Dashboard' },
-  { to: '/Ventas', icon: BarChart3, label: 'Ventas' },
+  { to: '/Ventas', icon: ShoppingCart, label: 'Ventas' },
   { to: '/Inventario', icon: PackagePlus, label: 'Control de Inventario' },
   { to: '/VentasServicio', icon: ShoppingBasket, label: 'Servicios' },
   { to: '/Reportes', icon: FileText, label: 'Reportes', hasSubmenu: true },
@@ -277,7 +278,7 @@ const NavBar: React.FC<NavBarProps> = ({ onLogout, children }) => {
               onClick={() => setIsPinned(!isPinned)}
               className={`w-6 h-6 border rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
                 isPinned 
-                  ? 'bg-blue-500 border-blue-600 hover:bg-blue-600' 
+                  ? 'bg-blue-400 border-blue-300 hover:bg-blue-600' 
                   : 'bg-white border-gray-300 hover:bg-gray-50'
               }`}
             >
@@ -293,7 +294,7 @@ const NavBar: React.FC<NavBarProps> = ({ onLogout, children }) => {
         {/* Main */}
         <div className="flex-1 flex flex-col">
           <motion.header 
-            className="bg-white border-b border-gray-200 px-6 py-[14px]"
+            className="bg-white border-b border-gray-200 px-6 py-[10px]"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.15, ease: "easeOut" }}
