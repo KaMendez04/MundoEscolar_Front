@@ -721,7 +721,7 @@ const VentasModule = () => {
                 <button
                   onClick={() => setMostrarModalCancelar(true)}
                   disabled={carrito.length === 0}
-                  className="w-full mt-4 bg-red-600 text-white px-4 py-3 rounded-lg hover:bg-red-700 transition font-medium shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full mt-4 bg-white text-red-600 px-4 py-3 rounded-lg hover:bg-red-700 hover:text-white transition font-medium shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <XCircle size={20} />
                   Cancelar Venta

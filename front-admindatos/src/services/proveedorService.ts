@@ -5,7 +5,8 @@ import type {
   CreateProveedorDto, 
   UpdateProveedorDto, 
   VistaProveedor,
-  CondicionPagoProveedor
+  CondicionPagoProveedor,
+  PaginatedResponse,
 } from '../types/proveedor';
 
 export const proveedorService = {
@@ -29,8 +30,24 @@ export const proveedorService = {
     return response.data;
   },
 
-  obtenerProveedores: async (): Promise<VistaProveedor[]> => {
-    const response = await client.get<VistaProveedor[]>('/Proveedor');
+  obtenerProveedores: async (params?: {
+    pageNumber?: number;
+    pageSize?: number;
+    nombre?: string;
+    cedulaJuridica?: string;
+    telefono?: string;
+    estado?: string;
+  }): Promise<PaginatedResponse<VistaProveedor>> => {
+    const queryParams = new URLSearchParams();
+    if (params?.pageNumber) queryParams.append('pageNumber', params.pageNumber.toString());
+    if (params?.pageSize) queryParams.append('pageSize', params.pageSize.toString());
+    if (params?.nombre) queryParams.append('nombre', params.nombre);
+    if (params?.cedulaJuridica) queryParams.append('cedulaJuridica', params.cedulaJuridica);
+    if (params?.telefono) queryParams.append('telefono', params.telefono);
+    if (params?.estado) queryParams.append('estado', params.estado);
+    
+    const url = `/Proveedor${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await client.get<PaginatedResponse<VistaProveedor>>(url);
     return response.data;
   },
 

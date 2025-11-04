@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { X, UserPlus, Search, User, ArrowLeft } from "lucide-react"
 import type { Cliente, CreateClienteDto } from "../../types/cliente"
+import { useCedulaLookup } from "../../hooks/useCedulaLookup" // 👈 NUEVO IMPORT
 
 interface ModalCrearClienteProps {
   onClose: () => void
@@ -28,6 +29,9 @@ const ModalCrearCliente = ({
   const [cedulaBuscada, setCedulaBuscada] = useState("")
   const [error, setError] = useState("")
   const [creandoCliente, setCreandoCliente] = useState(false)
+
+  // 👇 NUEVO: Hook para búsqueda de cédula en API externa
+  const { lookup, isLoading: loadingCedula } = useCedulaLookup()
 
   const [formData, setFormData] = useState<CreateClienteDto>({
     nombre: "",
@@ -94,6 +98,9 @@ const ModalCrearCliente = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {}
 
+    if (!formData.cedula || formData.cedula <= 0) {
+      newErrors.cedula = "La cédula debe ser un número válido"
+    }
     if (!formData.nombre.trim()) {
       newErrors.nombre = "El nombre es requerido"
     }
@@ -102,9 +109,6 @@ const ModalCrearCliente = ({
     }
     if (!formData.apellido2.trim()) {
       newErrors.apellido2 = "El segundo apellido es requerido"
-    }
-    if (!formData.cedula || formData.cedula <= 0) {
-      newErrors.cedula = "La cédula debe ser un número válido"
     }
     if (!formData.contacto.trim()) {
       newErrors.contacto = "El teléfono es requerido"
@@ -177,6 +181,26 @@ const ModalCrearCliente = ({
     }
   }
 
+  // 👇 NUEVA FUNCIÓN: Manejar cambio de cédula con búsqueda automática
+  const handleCedulaChange = async (value: string) => {
+    const cedula = parseInt(value) || 0
+    handleInputChange("cedula", cedula)
+    
+    // Solo buscar si la cédula tiene entre 9 y 12 dígitos
+    if (/^\d{9,12}$/.test(value)) {
+      const resultado = await lookup(value)
+      if (resultado) {
+        // Autocompletar los campos con los datos obtenidos
+        setFormData(prev => ({
+          ...prev,
+          nombre: resultado.firstname || "",
+          apellido1: resultado.lastname1 || "",
+          apellido2: resultado.lastname2 || ""
+        }))
+      }
+    }
+  }
+
   // Si no hay funciones de búsqueda, ir directo a crear
   useEffect(() => {
     if (!fetchClientes && !fetchClienteByCedula) {
@@ -192,158 +216,116 @@ const ModalCrearCliente = ({
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             {modo === "buscar" ? (
               <>
-                <Search size={24} />
+                <Search size={22} />
                 Buscar Cliente
               </>
             ) : (
               <>
-                <UserPlus size={24} />
+                <UserPlus size={22} />
                 Crear Nuevo Cliente
               </>
             )}
           </h2>
-          <button 
-            onClick={onClose} 
-            className="text-white/80 hover:text-white transition p-1 hover:bg-white/10 rounded-lg"
+          <button
+            onClick={onClose}
+            className="text-white/80 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-lg"
           >
-            <X size={24} />
+            <X size={22} />
           </button>
         </div>
 
-        {/* CONTENT */}
+        {/* BODY */}
         <div className="flex-1 overflow-y-auto">
           {/* MODO BUSCAR */}
-          {modo === "buscar" && (fetchClientes || fetchClienteByCedula) && (
-            <div className="p-6 space-y-6">
-              {/* Búsqueda rápida por cédula */}
-              {fetchClienteByCedula && (
-                <div className="bg-gray-50 rounded-lg p-5 border border-gray-200">
-                  <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <Search size={18} className="text-[#4a9d9d]" />
-                    Búsqueda Rápida por Cédula
-                  </label>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      value={cedulaBuscada}
-                      onChange={(e) => setCedulaBuscada(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && buscarPorCedula()}
-                      placeholder="Ingrese número de cédula"
-                      className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                    />
+          {modo === "buscar" && (
+            <div className="p-6">
+              {/* Buscar por cédula */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Buscar por Cédula
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={cedulaBuscada}
+                    onChange={(e) => setCedulaBuscada(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && buscarPorCedula()}
+                    className="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                    placeholder="Ingrese número de cédula"
+                  />
+                  <button
+                    onClick={buscarPorCedula}
+                    className="px-6 py-2.5 bg-[#4a9d9d] text-white rounded-lg hover:bg-[#5aadad] transition font-semibold shadow-sm"
+                  >
+                    Buscar
+                  </button>
+                </div>
+                {error && (
+                  <p className="text-sm text-orange-600 mt-2 font-medium bg-orange-50 px-3 py-2 rounded-lg border border-orange-200">
+                    {error}
+                  </p>
+                )}
+              </div>
+
+              <div className="border-t border-gray-200 pt-6 mt-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  O buscar en la lista de clientes
+                </label>
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                    placeholder="Buscar por nombre, apellidos o cédula..."
+                  />
+                </div>
+
+                {/* Lista de clientes */}
+                {loading && (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-[#4a9d9d] border-t-transparent"></div>
+                    <p className="mt-3 text-gray-600 text-sm">Cargando clientes...</p>
+                  </div>
+                )}
+
+                {!loading && clientesFiltrados.length === 0 && (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                    <User size={48} className="mx-auto mb-3 text-gray-300" />
+                    <p className="text-gray-600 font-medium">No se encontraron clientes</p>
+                    <p className="text-sm text-gray-500 mt-1">Intente con otro término de búsqueda</p>
+                  </div>
+                )}
+
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {!loading && clientesFiltrados.map((cliente) => (
                     <button
-                      onClick={buscarPorCedula}
-                      className="px-6 py-2.5 bg-[#4a9d9d] text-white rounded-lg hover:bg-[#5aadad] transition font-medium flex items-center gap-2 shadow-sm"
+                      key={cliente.idCliente}
+                      onClick={() => {
+                        onClienteCreado?.(cliente)
+                        onClose()
+                      }}
+                      className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-[#4a9d9d] hover:bg-[#4a9d9d]/5 transition text-left group"
                     >
-                      <Search size={18} />
-                      Buscar
-                    </button>
-                  </div>
-                  {error && (
-                    <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                      <p className="text-sm text-amber-800 flex items-center gap-2">
-                        <span>{error}</span>
-                        <button
-                          onClick={() => setModo("crear")}
-                          className="underline font-semibold hover:text-amber-900 transition"
-                        >
-                          Crear cliente
-                        </button>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Separador */}
-              {fetchClientes && fetchClienteByCedula && (
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-white text-gray-500 font-medium">O buscar en la lista completa</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Búsqueda en lista */}
-              {fetchClientes && (
-                <>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Buscar por nombre o apellido
-                    </label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                      <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Buscar cliente..."
-                        className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Lista de clientes */}
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {loading ? (
-                      <div className="text-center py-12">
-                        <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-[#4a9d9d] border-t-transparent"></div>
-                        <p className="mt-4 text-gray-600 text-sm">Cargando clientes...</p>
-                      </div>
-                    ) : clientesFiltrados.length === 0 ? (
-                      <div className="text-center py-12">
-                        <User size={48} className="mx-auto text-gray-300 mb-3" />
-                        <p className="text-gray-500 font-medium">No se encontraron clientes</p>
-                        <p className="text-sm text-gray-400 mt-1">Intenta con otro término de búsqueda</p>
-                      </div>
-                    ) : (
-                      clientesFiltrados.map((cliente) => (
-                        <div
-                          key={cliente.idCliente}
-                          onClick={() => {
-                            onClienteCreado?.(cliente)
-                            onClose()
-                          }}
-                          className="p-4 border-2 border-gray-200 rounded-lg hover:border-[#4a9d9d] hover:shadow-md cursor-pointer transition-all bg-white"
-                        >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <p className="font-semibold text-gray-900 text-lg">
-                                  {cliente.nombre} {cliente.apellido1} {cliente.apellido2}
-                                </p>
-                                <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
-                                  cliente.tipoCliente === "VIP"
-                                    ? "bg-purple-100 text-purple-700"
-                                    : cliente.tipoCliente === "Corporativo"
-                                    ? "bg-blue-100 text-blue-700"
-                                    : "bg-gray-100 text-gray-700"
-                                }`}>
-                                  {cliente.tipoCliente}
-                                </span>
-                              </div>
-                              <div className="space-y-1">
-                                <p className="text-sm text-gray-600">
-                                  <span className="font-semibold">Cédula:</span> {cliente.cedula}
-                                </p>
-                                <p className="text-sm text-gray-600">
-                                  <span className="font-semibold">Email:</span> {cliente.correoElectronico}
-                                </p>
-                                <p className="text-sm text-gray-600">
-                                  <span className="font-semibold">Teléfono:</span> {cliente.contacto}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-semibold text-gray-900 group-hover:text-[#4a9d9d] transition">
+                            {cliente.nombre} {cliente.apellido1} {cliente.apellido2}
+                          </p>
+                          <p className="text-sm text-gray-600 mt-0.5">Cédula: {cliente.cedula}</p>
+                          {cliente.contacto && (
+                            <p className="text-xs text-gray-500 mt-1">📞 {cliente.contacto}</p>
+                          )}
                         </div>
-                      ))
-                    )}
-                  </div>
-                </>
-              )}
+                        <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-[#4a9d9d]/10 text-[#4a9d9d]">
+                          {cliente.tipoCliente}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -358,6 +340,37 @@ const ModalCrearCliente = ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* 👇 CÉDULA AHORA ES EL PRIMER CAMPO CON BÚSQUEDA AUTOMÁTICA */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Cédula <span className="text-red-600">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.cedula || ""}
+                      onChange={(e) => handleCedulaChange(e.target.value)}
+                      className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] transition ${
+                        errors.cedula ? "border-red-500 bg-red-50" : "border-gray-300 bg-white focus:border-[#4a9d9d]"
+                      }`}
+                      placeholder="Ingrese número de cédula (se autocompletará el nombre)"
+                      disabled={loadingCedula}
+                    />
+                    {loadingCedula && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  {loadingCedula && (
+                    <p className="text-xs text-[#4a9d9d] mt-1.5 font-medium">🔍 Buscando información de la cédula...</p>
+                  )}
+                  {errors.cedula && <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.cedula}</p>}
+                </div>
+
                 {/* Nombre */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -407,23 +420,6 @@ const ModalCrearCliente = ({
                     placeholder="García"
                   />
                   {errors.apellido2 && <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.apellido2}</p>}
-                </div>
-
-                {/* Cédula */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Cédula <span className="text-red-600">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.cedula || ""}
-                    onChange={(e) => handleInputChange("cedula", parseInt(e.target.value) || 0)}
-                    className={`w-full px-4 py-2.5 border-2 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] transition ${
-                      errors.cedula ? "border-red-500 bg-red-50" : "border-gray-300 bg-white focus:border-[#4a9d9d]"
-                    }`}
-                    placeholder="123456789"
-                  />
-                  {errors.cedula && <p className="text-xs text-red-600 mt-1.5 font-medium">{errors.cedula}</p>}
                 </div>
 
                 {/* Tipo Cliente */}

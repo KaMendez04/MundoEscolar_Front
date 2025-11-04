@@ -36,3 +36,11 @@ export interface CondicionPagoProveedor {
     condicion: string,
     fecha: string
   }
+
+export interface PaginatedResponse<T> {
+  pageNumber: number;
+  pageSize: number;
+  totalRecords: number;
+  totalPages: number;
+  data: T[];
+}
