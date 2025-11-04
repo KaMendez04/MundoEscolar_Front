@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Plus, Search, Package, Tags, AlertCircle, X, Edit2, Trash2, CheckCircle } from "lucide-react"
 import { useProductos } from "../hooks/useProdutos"
 import { useCategorias } from "../hooks/useCategoria"
+import { useNotification } from "../context/NotificationContext"
 import type { Producto, CreateProductoDto } from "../types/produto"
 import type { Categoria, CreateCategoriaDto } from "../types/categoria"
 
@@ -54,6 +55,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "dang
 
 const InventarioModule = () => {
   const [activeTab, setActiveTab] = useState<"productos" | "categorias">("productos")
+  const notification = useNotification()
 
   // Productos
   const {
@@ -163,6 +165,31 @@ const InventarioModule = () => {
   const handleSubmitProducto = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormErrorProducto("")
+
+    // Validaciones
+    if (formDataProducto.stock <= 0) {
+      notification.error(
+        "Stock inválido", 
+        "El stock no puede ser 0 o menor"
+      )
+      return
+    }
+
+    if (formDataProducto.monto <= 0) {
+      notification.error(
+        "Precio inválido", 
+        "El precio base no puede ser 0 o menor"
+      )
+      return
+    }
+
+    if (formDataProducto.impuesto <= 0) {
+      notification.error(
+        "Impuesto inválido", 
+        "El impuesto no puede ser 0 o menor"
+      )
+      return
+    }
 
     try {
       if (editingProducto) {
