@@ -32,6 +32,10 @@ const EditarMontoModal = ({
   useEffect(() => {
     if (factura) {
       setMonto(factura.montoCancelado.toString());
+      // Resetear estados cuando cambia la factura
+      setError(null);
+      setSuccess(false);
+      setLoading(false);
     }
   }, [factura]);
 
@@ -65,9 +69,8 @@ const EditarMontoModal = ({
       
       setSuccess(true);
       setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 1500);
+        onSuccess(); // Esto cerrará el modal y refrescará datos
+      }, 1000);
     } catch (err: any) {
       setError(err.response?.data?.Mensaje || err.message || "Error al actualizar el monto");
     } finally {
@@ -441,6 +444,7 @@ export default function FacturasTable() {
     setPaginaActual,
     estadoPago,
     setEstadoPago,
+    refetchData, // 👈 Nueva función del hook
   } = useFacturasTabla(10);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -450,7 +454,7 @@ export default function FacturasTable() {
   // Reset a primera página al cambiar filtros
   useEffect(() => {
     setPaginaActual(1);
-  }, [searchTerm, estadoPago]);
+  }, [searchTerm, estadoPago, setPaginaActual]);
 
   // 🔍 Buscar en TODAS las facturas, no solo en la página actual
   const facturasFiltradas = facturas.filter((factura) => {
@@ -505,8 +509,12 @@ export default function FacturasTable() {
     setSelected(null);
   };
 
+  // 👇 AQUÍ ESTÁ EL CAMBIO PRINCIPAL
   const handleMontoSuccess = () => {
-    window.location.reload();
+    setEditingMonto(null); // Cerrar el modal primero
+    setTimeout(() => {
+      refetchData(); // Refrescar datos después de cerrar
+    }, 100); // Pequeño delay para asegurar que el modal se cierre
   };
 
   return (
