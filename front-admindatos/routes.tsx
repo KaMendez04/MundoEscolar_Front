@@ -1,4 +1,4 @@
-import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/react-router";
 import RootLayout from "./src/components/MainComponents/RootLayout";
 
 import AboutPage from "./src/page/OrdenPage";
@@ -15,17 +15,32 @@ import FacturasPage from "./src/page/FacturasTablaPage";
 // 1. Definir root
 import ReportesPage from "./src/page/ReportesPage";
 import VendedoresPage from "./src/page/vendedoresPage";
+
+
+
 const rootRoute = createRootRoute({
   component: RootLayout,
 });
 
 const ClienteRoute = createRoute({
+  beforeLoad: async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw redirect({ to: "/login" });
+    }
+  },
   getParentRoute: () => rootRoute,
   path: "/clientes",
   component: ClientePege,
 });          
 
 const VendedorRoute = createRoute({
+  beforeLoad: async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw redirect({ to: "/login" });
+    }
+  },
   getParentRoute: () => rootRoute,
   path: "/vendedores",
   component: VendedoresPage,
@@ -33,6 +48,12 @@ const VendedorRoute = createRoute({
 
 
 const FacturasRoute = createRoute({
+  beforeLoad: async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw redirect({ to: "/login" });
+    }
+  },
   getParentRoute: () => rootRoute,
   path: "/facturas",
   component: FacturasPage,
@@ -40,36 +61,72 @@ const FacturasRoute = createRoute({
 
 // 2. Definir rutas hijas
 const DashboardRoute = createRoute({
+  beforeLoad: async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw redirect({ to: "/login" });
+    }
+  },
   getParentRoute: () => rootRoute,
   path: "/",
   component: dashboardPage,
 });
 
 const VentasRoute = createRoute({
+  beforeLoad: async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw redirect({ to: "/login" });
+    }
+  },
   getParentRoute: () => rootRoute,
   path: "/Ventas",
   component: VentasPage,
 });
 
 const InventarioRoute = createRoute({
+  beforeLoad: async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw redirect({ to: "/login" });
+    }
+  },
   getParentRoute: () => rootRoute,
   path: "/Inventario",
   component: InventarioPage,
 });
 
 const ReportesRoute = createRoute({
+  beforeLoad: async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw redirect({ to: "/login" });
+    }
+  },
   getParentRoute: () => rootRoute,
- path: "/Reportes",
+  path: "/Reportes",
   component: ReportesPage,
 });
 
 const OrdenRoute = createRoute({
+  beforeLoad: async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw redirect({ to: "/login" });
+    }
+  },
   getParentRoute: () => rootRoute,
   path: "/Orden",
   component: AboutPage,
 });
 
 const VentasServicioRoute = createRoute({
+  beforeLoad: async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw redirect({ to: "/login" });
+    }
+  },
   getParentRoute: () => rootRoute,
   path: "/VentasServicio",
   component: VentasServicio,
