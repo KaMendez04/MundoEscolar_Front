@@ -278,7 +278,7 @@ const NavBar: React.FC<NavBarProps> = ({ onLogout, children }) => {
               onClick={() => setIsPinned(!isPinned)}
               className={`w-6 h-6 border rounded-full flex items-center justify-center shadow-lg transition-all duration-300 ${
                 isPinned 
-                  ? 'bg-blue-400 border-blue-300 hover:bg-blue-600' 
+                  ? 'bg-slate-400 border-slate-300 hover:bg-slate-600' 
                   : 'bg-white border-gray-300 hover:bg-gray-50'
               }`}
             >

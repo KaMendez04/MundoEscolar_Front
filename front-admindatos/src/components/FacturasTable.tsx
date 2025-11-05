@@ -48,7 +48,6 @@ const EditarMontoModal = ({
 
     const montoNum = parseFloat(monto);
 
-    // Validaciones
     if (isNaN(montoNum) || montoNum < 0) {
       setError("Ingrese un monto válido (mayor o igual a 0)");
       return;
@@ -62,7 +61,6 @@ const EditarMontoModal = ({
     setLoading(true);
 
     try {
-      // ✅ Llamada al servicio real
       await facturasService.updateMontoCancelado(factura.idFactura, montoNum);
       
       setSuccess(true);
@@ -104,7 +102,6 @@ const EditarMontoModal = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6">
-          {/* Información actual */}
           <div className="bg-gray-50 rounded-lg p-4 mb-6">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
@@ -128,7 +125,6 @@ const EditarMontoModal = ({
             </div>
           </div>
 
-          {/* Input del nuevo monto */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Nuevo Monto Cancelado
@@ -155,7 +151,6 @@ const EditarMontoModal = ({
             </p>
           </div>
 
-          {/* Preview del nuevo saldo */}
           {!isNaN(nuevoMonto) && nuevoMonto >= 0 && nuevoMonto <= factura.montoTotal && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
               <p className="text-sm text-blue-700 font-medium mb-2">
@@ -184,7 +179,6 @@ const EditarMontoModal = ({
             </div>
           )}
 
-          {/* Mensajes */}
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
               <AlertCircle size={18} />
@@ -199,7 +193,6 @@ const EditarMontoModal = ({
             </div>
           )}
 
-          {/* Botones */}
           <div className="flex gap-3">
             <button
               type="button"
@@ -235,7 +228,7 @@ const EditarMontoModal = ({
   );
 };
 
-// 🧾 Modal de detalles de factura (MODIFICADO)
+// 🧾 Modal de detalles de factura
 const DetalleFacturaModal = ({
   factura,
   onClose,
@@ -279,9 +272,7 @@ const DetalleFacturaModal = ({
         </div>
 
         <div className="p-6">
-          {/* Cliente y Vendedor */}
           <div className="grid grid-cols-2 gap-6 mb-6">
-            {/* Cliente */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <User className="text-[#4a9d9d]" size={16} />
@@ -319,7 +310,6 @@ const DetalleFacturaModal = ({
               </div>
             </div>
 
-            {/* Vendedor */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <User className="text-[#4a9d9d]" size={16} />
@@ -358,7 +348,6 @@ const DetalleFacturaModal = ({
             </div>
           </div>
 
-          {/* Información Financiera */}
           <div className="border-t border-gray-200 pt-6">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
               Información Financiera
@@ -407,18 +396,17 @@ const DetalleFacturaModal = ({
                 <p className="text-sm text-gray-500 mb-1">Estado</p>
                 <span
                   className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${
-                    factura.estadoPago
+                    factura.montoCancelado >= factura.montoTotal
                       ? "bg-green-100 text-green-700"
                       : "bg-red-100 text-red-700"
                   }`}
                 >
-                  {factura.estadoPago ? "Pagada" : "Pendiente"}
+                  {factura.montoCancelado >= factura.montoTotal ? "Pagada" : "Pendiente"}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Botones de acción */}
           <div className="flex justify-between mt-6 pt-6 border-t border-gray-200">
             <button
               onClick={onEditMonto}
@@ -440,10 +428,11 @@ const DetalleFacturaModal = ({
   );
 };
 
-// ✅ Tabla principal (ACTUALIZADA)
+// ✅ Tabla principal
 export default function FacturasTable() {
   const {
     facturas,
+    todasLasFacturas,
     loading,
     error,
     paginaActual,
@@ -457,14 +446,16 @@ export default function FacturasTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selected, setSelected] = useState<Factura | null>(null);
   const [editingMonto, setEditingMonto] = useState<Factura | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   // Reset a primera página al cambiar filtros
   useEffect(() => {
     setPaginaActual(1);
   }, [searchTerm, estadoPago]);
 
+  // 🔍 Buscar en TODAS las facturas, no solo en la página actual
   const facturasFiltradas = facturas.filter((factura) => {
+    if (!searchTerm) return true;
+    
     const matchesSearch =
       factura.numeroFactura.toString().includes(searchTerm) ||
       (factura.cliente &&
@@ -480,22 +471,48 @@ export default function FacturasTable() {
     return matchesSearch;
   });
 
+  // 🎯 Si hay búsqueda, buscar también en TODAS las facturas
+  const facturasEncontradas = searchTerm && todasLasFacturas.length > 0
+    ? todasLasFacturas.filter((factura) => {
+        // Aplicar filtro de estado si existe
+        if (estadoPago !== undefined) {
+          const estaPagada = factura.montoCancelado >= factura.montoTotal;
+          if ((estadoPago && !estaPagada) || (!estadoPago && estaPagada)) {
+            return false;
+          }
+        }
+
+        const matchesSearch =
+          factura.numeroFactura.toString().includes(searchTerm) ||
+          (factura.cliente &&
+            `${factura.cliente.nombre} ${factura.cliente.apellido1} ${
+              factura.cliente.apellido2 || ""
+            }`
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())) ||
+          (factura.vendedor &&
+            `${factura.vendedor.nombre} ${factura.vendedor.apellido1}`
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase()));
+        return matchesSearch;
+      })
+    : facturasFiltradas;
+
+  const facturasAMostrar = searchTerm ? facturasEncontradas : facturasFiltradas;
+
   const handleEditMonto = () => {
     setEditingMonto(selected);
     setSelected(null);
   };
 
   const handleMontoSuccess = () => {
-    // Recargar las facturas
-    setRefreshKey(prev => prev + 1);
-    window.location.reload(); // O puedes implementar un refresh más elegante
+    window.location.reload();
   };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          {/* Header */}
           <div className="border-b border-gray-200 px-6 py-4">
             <h1 className="text-2xl font-semibold text-gray-800">
               Gestión de Facturas
@@ -506,7 +523,6 @@ export default function FacturasTable() {
           </div>
 
           <div className="p-6">
-            {/* Filtros */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="relative md:col-span-2">
                 <Search
@@ -538,7 +554,6 @@ export default function FacturasTable() {
               </select>
             </div>
 
-            {/* Error */}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-center gap-2">
                 <AlertCircle size={20} />
@@ -546,12 +561,11 @@ export default function FacturasTable() {
               </div>
             )}
 
-            {/* Tabla */}
             {loading ? (
               <div className="text-center py-12">
                 <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-[#4a9d9d] border-t-transparent"></div>
                 <p className="mt-4 text-gray-600 text-sm">
-                  Cargando facturas...
+                  {estadoPago !== undefined ? "Cargando todas las facturas filtradas..." : "Cargando facturas..."}
                 </p>
               </div>
             ) : (
@@ -586,7 +600,7 @@ export default function FacturasTable() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {facturasFiltradas.map((factura) => (
+                    {facturasAMostrar.map((factura) => (
                       <tr
                         key={factura.idFactura}
                         className="hover:bg-gray-50 transition"
@@ -613,12 +627,12 @@ export default function FacturasTable() {
                         <td className="px-4 py-3 text-sm">
                           <span
                             className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                              factura.estadoPago
+                              factura.montoCancelado >= factura.montoTotal
                                 ? "bg-green-100 text-green-700"
                                 : "bg-red-100 text-red-700"
                             }`}
                           >
-                            {factura.estadoPago ? "Pagada" : "Pendiente"}
+                            {factura.montoCancelado >= factura.montoTotal ? "Pagada" : "Pendiente"}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
@@ -642,37 +656,42 @@ export default function FacturasTable() {
                   </tbody>
                 </table>
 
-                {/* Paginación */}
                 <div className="flex justify-between items-center p-4 border-t bg-gray-50">
                   <p className="text-sm text-gray-600">
-                    Mostrando {facturasFiltradas.length} de {totalRegistros} facturas (Página {paginaActual} de {totalPaginas})
+                    {estadoPago !== undefined ? (
+                      <>Mostrando {facturasFiltradas.length} facturas {estadoPago ? "pagadas" : "pendientes"}</>
+                    ) : (
+                      <>Mostrando {facturasFiltradas.length} de {totalRegistros} facturas (Página {paginaActual} de {totalPaginas})</>
+                    )}
                   </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setPaginaActual((p) => Math.max(p - 1, 1))}
-                      disabled={paginaActual === 1}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium border ${
-                        paginaActual === 1
-                          ? "text-gray-400 border-gray-200 cursor-not-allowed"
-                          : "text-[#4a9d9d] border-[#4a9d9d] hover:bg-[#4a9d9d]/10"
-                      }`}
-                    >
-                      Anterior
-                    </button>
-                    <button
-                      onClick={() =>
-                        setPaginaActual((p) => Math.min(p + 1, totalPaginas))
-                      }
-                      disabled={paginaActual === totalPaginas}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium border ${
-                        paginaActual === totalPaginas
-                          ? "text-gray-400 border-gray-200 cursor-not-allowed"
-                          : "text-[#4a9d9d] border-[#4a9d9d] hover:bg-[#4a9d9d]/10"
-                      }`}
-                    >
-                      Siguiente
-                    </button>
-                  </div>
+                  {estadoPago === undefined && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setPaginaActual((p) => Math.max(p - 1, 1))}
+                        disabled={paginaActual === 1}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+                          paginaActual === 1
+                            ? "text-gray-400 border-gray-200 cursor-not-allowed"
+                            : "text-[#4a9d9d] border-[#4a9d9d] hover:bg-[#4a9d9d]/10"
+                        }`}
+                      >
+                        Anterior
+                      </button>
+                      <button
+                        onClick={() =>
+                          setPaginaActual((p) => Math.min(p + 1, totalPaginas))
+                        }
+                        disabled={paginaActual === totalPaginas}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+                          paginaActual === totalPaginas
+                            ? "text-gray-400 border-gray-200 cursor-not-allowed"
+                            : "text-[#4a9d9d] border-[#4a9d9d] hover:bg-[#4a9d9d]/10"
+                        }`}
+                      >
+                        Siguiente
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -680,7 +699,6 @@ export default function FacturasTable() {
         </div>
       </div>
 
-      {/* Modales */}
       <DetalleFacturaModal 
         factura={selected} 
         onClose={() => setSelected(null)} 
