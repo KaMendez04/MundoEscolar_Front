@@ -1,5 +1,6 @@
 // components/VentasModule.tsx
 import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   ShoppingCart,
   Plus,
@@ -40,49 +41,66 @@ type ItemVenta = {
   stockDisponible?: number
 }
 
-// Modal de Confirmación
+// Modal de Confirmación con Framer Motion
 const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, type = "danger" }: any) => {
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            {type === "danger" ? (
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertCircle className="text-red-600" size={24} />
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            transition={{ type: "spring", duration: 0.3 }}
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full"
+          >
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                {type === "danger" ? (
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <AlertCircle className="text-red-600" size={24} />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-[#4a9d9d]/10 flex items-center justify-center">
+                    <CheckCircle className="text-[#4a9d9d]" size={24} />
+                  </div>
+                )}
+                <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
               </div>
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-[#4a9d9d]/10 flex items-center justify-center">
-                <CheckCircle className="text-[#4a9d9d]" size={24} />
+              <p className="text-gray-600 mb-6 ml-15">{message}</p>
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={onClose}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition"
+                >
+                  Cancelar
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    onConfirm()
+                    onClose()
+                  }}
+                  className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-white transition ${
+                    type === "danger" ? "bg-red-600 hover:bg-red-700" : "bg-[#4a9d9d] hover:bg-[#5aadad]"
+                  }`}
+                >
+                  Confirmar
+                </motion.button>
               </div>
-            )}
-            <h3 className="text-xl font-semibold text-gray-900">{title}</h3>
-          </div>
-          <p className="text-gray-600 mb-6 ml-15">{message}</p>
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => {
-                onConfirm()
-                onClose()
-              }}
-              className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-white transition ${
-                type === "danger" ? "bg-red-600 hover:bg-red-700" : "bg-[#4a9d9d] hover:bg-[#5aadad]"
-              }`}
-            >
-              Confirmar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -203,18 +221,14 @@ const VentasModule = () => {
     setCarrito(carrito.filter((item) => item.id !== itemId))
   }
 
-  // CALCULAR TOTALES DEL CARRITO - EXACTAMENTE COMO EL BACKEND
+  // CALCULAR TOTALES DEL CARRITO
   const calcularTotales = () => {
     let subtotal = 0
     let totalImpuesto = 0
     let totalDescuento = 0
     
     carrito.forEach((item) => {
-      // El backend calcula así:
-      // 1. Subtotal = precio × cantidad
       const itemSubtotal = item.cantidad * item.precioUnitario
-      
-      // 2. Descuento e Impuesto se calculan sobre el subtotal ORIGINAL
       const itemDescuento = (itemSubtotal * item.descuento) / 100
       const itemImpuesto = (itemSubtotal * item.impuesto) / 100
       
@@ -223,9 +237,7 @@ const VentasModule = () => {
       totalImpuesto += itemImpuesto
     })
     
-    // Total = Subtotal - Descuento + Impuesto
     const total = subtotal - totalDescuento + totalImpuesto
-    
     return { subtotal, impuesto: totalImpuesto, descuento: totalDescuento, total }
   }
 
@@ -247,7 +259,7 @@ const VentasModule = () => {
     return { subtotal, impuesto: totalImpuesto, descuento: totalDescuento, total }
   }
 
-  // PROCESAR VENTA - CON VALIDACIÓN DE MONTO
+  // PROCESAR VENTA
   const procesarVenta = async () => {
     if (carrito.length === 0) {
       notification.warning("Carrito vacío", "Agrega productos o servicios antes de procesar la venta")
@@ -259,14 +271,12 @@ const VentasModule = () => {
       return
     }
 
-    // Calcular el total estimado
     const totalesEstimados = calcularTotales()
     const montoIngresado = montoCancelado && parseFloat(montoCancelado) > 0 
       ? parseFloat(montoCancelado) 
       : 0
 
     try {
-      // 1. Crear factura vacía SOLO UNA VEZ
       const nuevaFactura = await createFactura()
       if (!nuevaFactura) {
         notification.error("Error", "No se pudo crear la factura")
@@ -276,7 +286,6 @@ const VentasModule = () => {
       setIdFacturaActual(nuevaFactura.idFactura)
       setNumeroFactura(nuevaFactura.numeroFactura)
 
-      // 2. Agregar todos los detalles
       console.log("🛒 Agregando detalles del carrito:", carrito)
       
       for (const item of carrito) {
@@ -293,16 +302,10 @@ const VentasModule = () => {
         }
       }
 
-      // 3. Esperar a que el backend calcule los totales
       await new Promise(resolve => setTimeout(resolve, 800))
-
-      // 4. Obtener la factura actualizada con los totales REALES del backend
       await fetchFacturaById(facturaId)
-
-      // 5. Esperar a que se actualice el estado
       await new Promise(resolve => setTimeout(resolve, 500))
 
-      // 6. Actualizar factura con datos finales
       console.log("💰 Actualizando factura con datos finales:", {
         idFactura: facturaId,
         idVendedor: vendedor.idVendedor,
@@ -320,7 +323,6 @@ const VentasModule = () => {
       })
 
       if (success) {
-        // 7. Recargar factura final y mostrar resumen
         setTimeout(async () => {
           await fetchFacturaById(facturaId!)
           setMostrarResumenFinal(true)
@@ -341,7 +343,7 @@ const VentasModule = () => {
     }
   }
 
-  // CANCELAR VENTA - Limpiar todo
+  // CANCELAR VENTA
   const cancelarVenta = () => {
     setCarrito([])
     setIdFacturaActual(null)
@@ -356,7 +358,7 @@ const VentasModule = () => {
     )
   }
 
-  // NUEVA VENTA (después de finalizar una)
+  // NUEVA VENTA
   const nuevaVenta = () => {
     setCarrito([])
     setIdFacturaActual(null)
@@ -368,11 +370,20 @@ const VentasModule = () => {
 
   const totales = calcularTotales()
 
-  // Mostrar error si no se puede cargar el vendedor
+  // Error de vendedor
   if (errorVendedor) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="min-h-screen bg-gray-50 p-6 flex items-center justify-center"
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring" }}
+          className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full"
+        >
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
               <AlertCircle className="text-red-600" size={24} />
@@ -381,12 +392,12 @@ const VentasModule = () => {
           </div>
           <p className="text-gray-600 mb-4">{errorVendedor}</p>
           <p className="text-sm text-gray-500">Por favor, inicie sesión nuevamente.</p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     )
   }
 
-  // Mostrar loading mientras carga el vendedor
+  // Loading vendedor
   if (loadingVendedor) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
@@ -399,9 +410,14 @@ const VentasModule = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="min-h-screen bg-gray-50 p-6"
+    >
       <div className="max-w-7xl mx-auto">
-        {/* MODAL CONFIRMACIÓN PROCESAR */}
+        {/* MODALES */}
         <ConfirmModal
           isOpen={mostrarModalConfirm}
           onClose={() => setMostrarModalConfirm(false)}
@@ -411,7 +427,6 @@ const VentasModule = () => {
           type="success"
         />
 
-        {/* MODAL CONFIRMACIÓN CANCELAR */}
         <ConfirmModal
           isOpen={mostrarModalCancelar}
           onClose={() => setMostrarModalCancelar(false)}
@@ -422,130 +437,167 @@ const VentasModule = () => {
         />
 
         {/* MODAL RESUMEN FINAL */}
-        {mostrarResumenFinal && factura && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                  <Receipt size={28} className="text-[#4a9d9d]" />
-                  Factura #{factura.numeroFactura}
-                </h2>
-                <button
-                  onClick={nuevaVenta}
-                  className="bg-[#4a9d9d] text-white px-4 py-2 rounded-lg hover:bg-[#5aadad] transition"
-                >
-                  Nueva Venta
-                </button>
-              </div>
-              <div className="p-6 space-y-6">
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Fecha:</span>
-                      <p className="font-medium">
-                        {new Date(factura.fechaEmision).toLocaleString()}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Estado:</span>
-                      <p className="font-medium">{factura.estadoPago ? "Pagado" : "Pendiente"}</p>
-                    </div>
-                  </div>
+        <AnimatePresence>
+          {mostrarResumenFinal && factura && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 50 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 50 }}
+                transition={{ type: "spring", damping: 25 }}
+                className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+              >
+                <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+                  <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <Receipt size={28} className="text-[#4a9d9d]" />
+                    Factura #{factura.numeroFactura}
+                  </h2>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={nuevaVenta}
+                    className="bg-[#4a9d9d] text-white px-4 py-2 rounded-lg hover:bg-[#5aadad] transition"
+                  >
+                    Nueva Venta
+                  </motion.button>
                 </div>
-                {(factura.cliente || factura.vendedor) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {factura.cliente && (
-                      <div className="border border-gray-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-gray-800 mb-2">Cliente</h3>
-                        <p className="text-sm">
-                          {factura.cliente.nombre} {factura.cliente.apellido1}
+                <div className="p-6 space-y-6">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-gray-50 rounded-lg p-4"
+                  >
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Fecha:</span>
+                        <p className="font-medium">
+                          {new Date(factura.fechaEmision).toLocaleString()}
                         </p>
-                        <p className="text-xs text-gray-600">Cédula: {factura.cliente.cedula}</p>
                       </div>
-                    )}
-                    {factura.vendedor && (
-                      <div className="border border-gray-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-gray-800 mb-2">Vendedor</h3>
-                        <p className="text-sm">
-                          {factura.vendedor.nombre} {factura.vendedor.apellido1}
-                        </p>
-                        <p className="text-xs text-gray-600">Cédula: {factura.vendedor.cedula}</p>
+                      <div>
+                        <span className="text-gray-600">Estado:</span>
+                        <p className="font-medium">{factura.estadoPago ? "Pagado" : "Pendiente"}</p>
                       </div>
-                    )}
-                  </div>
-                )}
-                <div>
-                  <h3 className="font-semibold text-gray-800 mb-3">Detalles de la Venta</h3>
-                  <div className="space-y-2">
-                    {factura.detalles.map((detalle, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center border-b border-gray-200 pb-2"
+                    </div>
+                  </motion.div>
+                  {(factura.cliente || factura.vendedor) && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                    >
+                      {factura.cliente && (
+                        <div className="border border-gray-200 rounded-lg p-4">
+                          <h3 className="font-semibold text-gray-800 mb-2">Cliente</h3>
+                          <p className="text-sm">
+                            {factura.cliente.nombre} {factura.cliente.apellido1}
+                          </p>
+                          <p className="text-xs text-gray-600">Cédula: {factura.cliente.cedula}</p>
+                        </div>
+                      )}
+                      {factura.vendedor && (
+                        <div className="border border-gray-200 rounded-lg p-4">
+                          <h3 className="font-semibold text-gray-800 mb-2">Vendedor</h3>
+                          <p className="text-sm">
+                            {factura.vendedor.nombre} {factura.vendedor.apellido1}
+                          </p>
+                          <p className="text-xs text-gray-600">Cédula: {factura.vendedor.cedula}</p>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <h3 className="font-semibold text-gray-800 mb-3">Detalles de la Venta</h3>
+                    <div className="space-y-2">
+                      {factura.detalles.map((detalle, index) => (
+                        <motion.div
+                          key={index}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.3 + index * 0.05 }}
+                          className="flex justify-between items-center border-b border-gray-200 pb-2"
+                        >
+                          <div className="flex-1">
+                            <p className="font-medium">
+                              {detalle.producto?.nombre || detalle.servicio?.nombre}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              Cantidad: {detalle.cantidad} x ₡
+                              {((detalle.subtotal / detalle.cantidad) || 0).toFixed(2)}
+                            </p>
+                          </div>
+                          <p className="font-semibold">₡{detalle.subtotal.toFixed(2)}</p>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+                  {(() => {
+                    const totalesReales = calcularTotalesReales(factura)
+                    const saldoPendiente = totalesReales.total - factura.montoCancelado
+                    const cambio = factura.montoCancelado - totalesReales.total
+                    
+                    return (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="border-t border-gray-300 pt-4 space-y-2"
                       >
-                        <div className="flex-1">
-                          <p className="font-medium">
-                            {detalle.producto?.nombre || detalle.servicio?.nombre}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            Cantidad: {detalle.cantidad} x ₡
-                            {((detalle.subtotal / detalle.cantidad) || 0).toFixed(2)}
-                          </p>
-                        </div>
-                        <p className="font-semibold">₡{detalle.subtotal.toFixed(2)}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                {(() => {
-                  const totalesReales = calcularTotalesReales(factura)
-                  const saldoPendiente = totalesReales.total - factura.montoCancelado
-                  const cambio = factura.montoCancelado - totalesReales.total
-                  
-                  return (
-                    <div className="border-t border-gray-300 pt-4 space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Subtotal:</span>
-                        <span>₡{totalesReales.subtotal.toFixed(2)}</span>
-                      </div>
-                      {totalesReales.descuento > 0 && (
-                        <div className="flex justify-between text-sm text-green-600">
-                          <span>Descuento:</span>
-                          <span>-₡{totalesReales.descuento.toFixed(2)}</span>
-                        </div>
-                      )}
-                      {totalesReales.impuesto > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span>Impuesto:</span>
-                          <span>₡{totalesReales.impuesto.toFixed(2)}</span>
+                          <span>Subtotal:</span>
+                          <span>₡{totalesReales.subtotal.toFixed(2)}</span>
                         </div>
-                      )}
-                      <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t">
-                        <span>Total:</span>
-                        <span className="text-[#4a9d9d]">₡{totalesReales.total.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-blue-600">
-                        <span>Monto Cancelado:</span>
-                        <span>₡{factura.montoCancelado.toFixed(2)}</span>
-                      </div>
-                      {saldoPendiente > 0.01 && (
-                        <div className="flex justify-between text-sm text-red-600 font-semibold">
-                          <span>Saldo Pendiente:</span>
-                          <span>₡{saldoPendiente.toFixed(2)}</span>
+                        {totalesReales.descuento > 0 && (
+                          <div className="flex justify-between text-sm text-green-600">
+                            <span>Descuento:</span>
+                            <span>-₡{totalesReales.descuento.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {totalesReales.impuesto > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span>Impuesto:</span>
+                            <span>₡{totalesReales.impuesto.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t">
+                          <span>Total:</span>
+                          <span className="text-[#4a9d9d]">₡{totalesReales.total.toFixed(2)}</span>
                         </div>
-                      )}
-                      {cambio > 0.01 && (
-                        <div className="flex justify-between text-sm text-green-600 font-semibold">
-                          <span>Cambio:</span>
-                          <span>₡{cambio.toFixed(2)}</span>
+                        <div className="flex justify-between text-sm text-blue-600">
+                          <span>Monto Cancelado:</span>
+                          <span>₡{factura.montoCancelado.toFixed(2)}</span>
                         </div>
-                      )}
-                    </div>
-                  )
-                })()}
-              </div>
-            </div>
-          </div>
-        )}
+                        {saldoPendiente > 0.01 && (
+                          <div className="flex justify-between text-sm text-red-600 font-semibold">
+                            <span>Saldo Pendiente:</span>
+                            <span>₡{saldoPendiente.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {cambio > 0.01 && (
+                          <div className="flex justify-between text-sm text-green-600 font-semibold">
+                            <span>Cambio:</span>
+                            <span>₡{cambio.toFixed(2)}</span>
+                          </div>
+                        )}
+                      </motion.div>
+                    )
+                  })()}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* MODAL CLIENTE */}
         {mostrarModalCliente && (
@@ -565,7 +617,12 @@ const VentasModule = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* PANEL DE ACCIONES */}
-          <div className="lg:col-span-1">
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="lg:col-span-1"
+          >
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 sticky top-6 space-y-6">
               <div>
                 <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
@@ -573,7 +630,9 @@ const VentasModule = () => {
                   Agregar Items
                 </h2>
                 <div className="space-y-3">
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       setTipoModal("producto")
                       setMostrarModal(true)
@@ -583,8 +642,10 @@ const VentasModule = () => {
                   >
                     <Package size={20} />
                     Agregar Producto
-                  </button>
-                  <button
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       setTipoModal("servicio")
                       setMostrarModal(true)
@@ -594,7 +655,7 @@ const VentasModule = () => {
                   >
                     <Briefcase size={20} />
                     Agregar Servicio
-                  </button>
+                  </motion.button>
                 </div>
               </div>
 
@@ -605,7 +666,11 @@ const VentasModule = () => {
                 </h3>
                 <div className="space-y-3">
                   {/* VENDEDOR */}
-                  <div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                  >
                     <label className="block text-xs text-gray-600 mb-1">Vendedor</label>
                     <div className="bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
                       <div className="text-sm">
@@ -617,10 +682,14 @@ const VentasModule = () => {
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
 
                   {/* CLIENTE */}
-                  <div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                  >
                     <label className="block text-xs text-gray-600 mb-1">Cliente <span className="text-red-600">*</span></label>
                     {clienteSeleccionado ? (
                       <div className="flex items-center justify-between bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
@@ -632,27 +701,36 @@ const VentasModule = () => {
                             Cédula: {clienteSeleccionado.cedula}
                           </p>
                         </div>
-                        <button
+                        <motion.button
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
                           onClick={() => setClienteSeleccionado(null)}
                           className="text-red-600 hover:text-red-800"
                         >
                           <X size={16} />
-                        </button>
+                        </motion.button>
                       </div>
                     ) : (
-                      <button
+                      <motion.button
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                         onClick={() => setMostrarModalCliente(true)}
                         className="w-full flex items-center justify-center gap-2 bg-[#4a9d9d] text-white px-3 py-2 rounded-lg hover:bg-[#5aadad] transition text-sm font-medium"
                       >
                         <User size={18} />
                         Seleccionar Cliente
-                      </button>
+                      </motion.button>
                     )}
-                  </div>
+                  </motion.div>
                 </div>
               </div>
 
-              <div className="border-t border-gray-200 pt-6">
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="border-t border-gray-200 pt-6"
+              >
                 <h3 className="text-sm font-semibold text-gray-600 uppercase mb-3">Resumen</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between text-gray-600">
@@ -717,18 +795,21 @@ const VentasModule = () => {
                   </div>
                 </div>
 
-                {/* BOTÓN CANCELAR VENTA */}
-                <button
+                {/* BOTONES */}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => setMostrarModalCancelar(true)}
                   disabled={carrito.length === 0}
                   className="w-full mt-4 bg-white text-red-600 px-4 py-3 rounded-lg hover:bg-red-700 hover:text-white transition font-medium shadow-sm disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   <XCircle size={20} />
                   Cancelar Venta
-                </button>
+                </motion.button>
 
-                {/* BOTÓN PROCESAR VENTA */}
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => setMostrarModalConfirm(true)}
                   disabled={carrito.length === 0 || loadingFactura || !clienteSeleccionado}
                   className="w-full mt-3 bg-[#9d8560] text-white px-4 py-3 rounded-lg hover:bg-[#b89d7d] transition font-medium shadow-sm disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -744,13 +825,18 @@ const VentasModule = () => {
                       Procesar Venta
                     </>
                   )}
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
 
           {/* CARRITO DE COMPRAS */}
-          <div className="lg:col-span-2">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="lg:col-span-2"
+          >
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">
               <div className="border-b border-gray-200 px-6 py-4">
                 <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
@@ -765,212 +851,257 @@ const VentasModule = () => {
               </div>
 
               <div className="p-6">
-                {carrito.length === 0 ? (
-                  <div className="text-center py-12">
-                    <ShoppingCart size={64} className="mx-auto text-gray-300 mb-4" />
-                    <p className="text-gray-500 text-lg">El carrito está vacío</p>
-                    <p className="text-gray-400 text-sm mt-2">
-                      Agrega productos o servicios para comenzar
-                    </p>
+                <AnimatePresence mode="wait">
+                  {carrito.length === 0 ? (
+                    <motion.div
+                      key="empty"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      className="text-center py-12"
+                    >
+                      <ShoppingCart size={64} className="mx-auto text-gray-300 mb-4" />
+                      <p className="text-gray-500 text-lg">El carrito está vacío</p>
+                      <p className="text-gray-400 text-sm mt-2">
+                        Agrega productos o servicios para comenzar
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="items"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="space-y-4"
+                    >
+                      <AnimatePresence>
+                        {carrito.map((item, index) => (
+                          <motion.div
+                            key={item.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
+                          >
+                            <div
+                              className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                                item.tipo === "producto" ? "bg-[#4a9d9d]/10" : "bg-[#9d8560]/10"
+                              }`}
+                            >
+                              {item.tipo === "producto" ? (
+                                <Package className="text-[#4a9d9d]" size={24} />
+                              ) : (
+                                <Briefcase className="text-[#9d8560]" size={24} />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-gray-900 truncate">{item.nombre}</h3>
+                              <p className="text-sm text-gray-500 truncate">{item.descripcion}</p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <span className="text-xs text-gray-500">
+                                  ₡{item.precioUnitario.toFixed(2)} c/u
+                                </span>
+                                {item.tipo === "producto" && (
+                                  <span className="text-xs text-gray-500">
+                                    Stock: {item.stockDisponible}
+                                  </span>
+                                )}
+                                {item.impuesto > 0 && (
+                                  <span className="text-xs text-blue-600">
+                                    IVA: {item.impuesto}%
+                                  </span>
+                                )}
+                                {item.descuento > 0 && (
+                                  <span className="text-xs text-green-600">
+                                    Desc: {item.descuento}%
+                                  </span>
+                                )}
+                                <span
+                                  className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                                    item.tipo === "producto"
+                                      ? "bg-[#4a9d9d]/10 text-[#4a9d9d]"
+                                      : "bg-[#9d8560]/10 text-[#9d8560]"
+                                  }`}
+                                >
+                                  {item.tipo === "producto" ? "Producto" : "Servicio"}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-300 px-2 py-1">
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => actualizarCantidad(item.id, -1)}
+                                  className="text-gray-600 hover:text-gray-800 p-1"
+                                  disabled={item.cantidad <= 1}
+                                >
+                                  <Minus size={16} />
+                                </motion.button>
+                                <span className="font-medium text-gray-900 w-8 text-center">
+                                  {item.cantidad}
+                                </span>
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={() => actualizarCantidad(item.id, 1)}
+                                  className="text-gray-600 hover:text-gray-800 p-1"
+                                >
+                                  <Plus size={16} />
+                                </motion.button>
+                              </div>
+                              <div className="text-right min-w-24">
+                                <p className="font-semibold text-gray-900">
+                                  ₡{item.subtotal.toFixed(2)}
+                                </p>
+                              </div>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => eliminarDelCarrito(item.id)}
+                                className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg transition"
+                              >
+                                <Trash2 size={18} />
+                              </motion.button>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* MODAL PRODUCTOS/SERVICIOS */}
+        <AnimatePresence>
+          {mostrarModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, y: 50 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 50 }}
+                transition={{ type: "spring", damping: 25 }}
+                className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col"
+              >
+                <div className="flex justify-between items-center p-6 border-b border-gray-200">
+                  <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+                    {tipoModal === "producto" ? (
+                      <>
+                        <Package size={24} className="text-[#4a9d9d]" /> Seleccionar Producto
+                      </>
+                    ) : (
+                      <>
+                        <Briefcase size={24} className="text-[#9d8560]" /> Seleccionar Servicio
+                      </>
+                    )}
+                  </h2>
+                  <motion.button
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => {
+                      setMostrarModal(false)
+                      setSearchTerm("")
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition"
+                  >
+                    <X size={22} />
+                  </motion.button>
+                </div>
+                <div className="p-6 border-b border-gray-200">
+                  <div className="relative">
+                    <Search
+                      className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                      size={20}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Buscar..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
+                      autoFocus
+                    />
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {carrito.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200"
-                      >
-                        <div
-                          className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                            item.tipo === "producto" ? "bg-[#4a9d9d]/10" : "bg-[#9d8560]/10"
-                          }`}
+                </div>
+                <div className="flex-1 overflow-y-auto p-6">
+                  {(tipoModal === "producto" ? loadingProductos : loadingServicios) ? (
+                    <div className="text-center py-12">
+                      <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-[#4a9d9d] border-t-transparent"></div>
+                      <p className="mt-4 text-gray-600 text-sm">Cargando...</p>
+                    </div>
+                  ) : itemsFiltrados.length === 0 ? (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500">
+                        No se encontraron {tipoModal === "producto" ? "productos" : "servicios"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {itemsFiltrados.map((item: any, index) => (
+                        <motion.div
+                          key={tipoModal === "producto" ? item.idProducto : item.idServicio}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: index * 0.05 }}
+                          whileHover={{ scale: 1.02, boxShadow: "0 10px 30px rgba(0,0,0,0.1)" }}
+                          className="border border-gray-200 rounded-lg p-4 hover:border-[#4a9d9d] transition cursor-pointer"
+                          onClick={() => agregarAlCarrito(item, tipoModal)}
                         >
-                          {item.tipo === "producto" ? (
-                            <Package className="text-[#4a9d9d]" size={24} />
-                          ) : (
-                            <Briefcase className="text-[#9d8560]" size={24} />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-gray-900 truncate">{item.nombre}</h3>
-                          <p className="text-sm text-gray-500 truncate">{item.descripcion}</p>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-gray-500">
-                              ₡{item.precioUnitario.toFixed(2)} c/u
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="font-medium text-gray-900">{item.nombre}</h3>
+                            <span className="text-[#4a9d9d] font-semibold">
+                              ₡{(item.monto ?? item.precio ?? 0).toFixed(2)}
                             </span>
-                            {item.tipo === "producto" && (
-                              <span className="text-xs text-gray-500">
-                                Stock: {item.stockDisponible}
+                          </div>
+                          <p className="text-sm text-gray-600 mb-3">{item.descripcion}</p>
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            {tipoModal === "producto" && (
+                              <span
+                                className={`text-xs px-2 py-1 rounded-full ${
+                                  item.stock > 10
+                                    ? "bg-green-100 text-green-700"
+                                    : item.stock > 0
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-red-100 text-red-700"
+                                }`}
+                              >
+                                Stock: {item.stock}
                               </span>
                             )}
                             {item.impuesto > 0 && (
-                              <span className="text-xs text-blue-600">
+                              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
                                 IVA: {item.impuesto}%
                               </span>
                             )}
                             {item.descuento > 0 && (
-                              <span className="text-xs text-green-600">
+                              <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
                                 Desc: {item.descuento}%
                               </span>
                             )}
-                            <span
-                              className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
-                                item.tipo === "producto"
-                                  ? "bg-[#4a9d9d]/10 text-[#4a9d9d]"
-                                  : "bg-[#9d8560]/10 text-[#9d8560]"
-                              }`}
-                            >
-                              {item.tipo === "producto" ? "Producto" : "Servicio"}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-300 px-2 py-1">
-                            <button
-                              onClick={() => actualizarCantidad(item.id, -1)}
-                              className="text-gray-600 hover:text-gray-800 p-1"
-                              disabled={item.cantidad <= 1}
-                            >
-                              <Minus size={16} />
-                            </button>
-                            <span className="font-medium text-gray-900 w-8 text-center">
-                              {item.cantidad}
-                            </span>
-                            <button
-                              onClick={() => actualizarCantidad(item.id, 1)}
-                              className="text-gray-600 hover:text-gray-800 p-1"
-                            >
-                              <Plus size={16} />
+                            <button className="text-sm text-[#4a9d9d] hover:text-[#5aadad] font-medium ml-auto">
+                              Agregar +
                             </button>
                           </div>
-                          <div className="text-right min-w-24">
-                            <p className="font-semibold text-gray-900">
-                              ₡{item.subtotal.toFixed(2)}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => eliminarDelCarrito(item.id)}
-                            className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-lg transition"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* MODAL PRODUCTOS/SERVICIOS */}
-        {mostrarModal && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col">
-              <div className="flex justify-between items-center p-6 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
-                  {tipoModal === "producto" ? (
-                    <>
-                      <Package size={24} className="text-[#4a9d9d]" /> Seleccionar Producto
-                    </>
-                  ) : (
-                    <>
-                      <Briefcase size={24} className="text-[#9d8560]" /> Seleccionar Servicio
-                    </>
+                        </motion.div>
+                      ))}
+                    </div>
                   )}
-                </h2>
-                <button
-                  onClick={() => {
-                    setMostrarModal(false)
-                    setSearchTerm("")
-                  }}
-                  className="text-gray-400 hover:text-gray-600 transition"
-                >
-                  <X size={22} />
-                </button>
-              </div>
-              <div className="p-6 border-b border-gray-200">
-                <div className="relative">
-                  <Search
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                    size={20}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Buscar..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4a9d9d] focus:border-[#4a9d9d] bg-white"
-                    autoFocus
-                  />
                 </div>
-              </div>
-              <div className="flex-1 overflow-y-auto p-6">
-                {(tipoModal === "producto" ? loadingProductos : loadingServicios) ? (
-                  <div className="text-center py-12">
-                    <div className="inline-block animate-spin rounded-full h-10 w-10 border-3 border-[#4a9d9d] border-t-transparent"></div>
-                    <p className="mt-4 text-gray-600 text-sm">Cargando...</p>
-                  </div>
-                ) : itemsFiltrados.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500">
-                      No se encontraron {tipoModal === "producto" ? "productos" : "servicios"}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {itemsFiltrados.map((item: any) => (
-                      <div
-                        key={tipoModal === "producto" ? item.idProducto : item.idServicio}
-                        className="border border-gray-200 rounded-lg p-4 hover:border-[#4a9d9d] hover:shadow-md transition cursor-pointer"
-                        onClick={() => agregarAlCarrito(item, tipoModal)}
-                      >
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="font-medium text-gray-900">{item.nombre}</h3>
-                          <span className="text-[#4a9d9d] font-semibold">
-                            ₡{(item.monto ?? item.precio ?? 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mb-3">{item.descripcion}</p>
-                        <div className="flex items-center justify-between flex-wrap gap-2">
-                          {tipoModal === "producto" && (
-                            <span
-                              className={`text-xs px-2 py-1 rounded-full ${
-                                item.stock > 10
-                                  ? "bg-green-100 text-green-700"
-                                  : item.stock > 0
-                                  ? "bg-amber-100 text-amber-700"
-                                  : "bg-red-100 text-red-700"
-                              }`}
-                            >
-                              Stock: {item.stock}
-                            </span>
-                          )}
-                          {item.impuesto > 0 && (
-                            <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                              IVA: {item.impuesto}%
-                            </span>
-                          )}
-                          {item.descuento > 0 && (
-                            <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">
-                              Desc: {item.descuento}%
-                            </span>
-                          )}
-                          <button className="text-sm text-[#4a9d9d] hover:text-[#5aadad] font-medium ml-auto">
-                            Agregar +
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   )
 }
 

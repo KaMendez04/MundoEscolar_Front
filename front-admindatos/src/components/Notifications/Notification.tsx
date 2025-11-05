@@ -55,10 +55,10 @@ const Notification = ({
   }
 
   // Configuración de estilos por tipo de notificación
-  const notificationConfig = {
+const notificationConfig = {
     success: {
       icon: CheckCircle,
-      bgColor: "bg-gradient-to-r green",
+      bgColor: "bg-white/95",
       borderColor: "border-emerald-500",
       iconBgColor: "bg-emerald-100",
       iconColor: "text-emerald-600",
@@ -68,7 +68,7 @@ const Notification = ({
     },
     error: {
       icon: XCircle,
-      bgColor: "bg-gradient-to-r from-red-50 to-rose-50",
+      bgColor: "bg-white/95",
       borderColor: "border-red-500",
       iconBgColor: "bg-red-100",
       iconColor: "text-red-600",
@@ -78,7 +78,7 @@ const Notification = ({
     },
     warning: {
       icon: AlertCircle,
-      bgColor: "bg-gradient-to-r white",
+      bgColor: "bg-white/95",
       borderColor: "border-amber-500",
       iconBgColor: "bg-amber-100",
       iconColor: "text-amber-600",
@@ -88,7 +88,7 @@ const Notification = ({
     },
     info: {
       icon: Info,
-      bgColor: "bg-gradient-to-r blue",
+      bgColor: "bg-white/95",
       borderColor: "border-blue-500",
       iconBgColor: "bg-blue-100",
       iconColor: "text-blue-600",
